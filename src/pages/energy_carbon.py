@@ -1,0 +1,222 @@
+import html as _html
+
+import plotly.graph_objects as go
+import streamlit as st
+
+from src.components.arena_components import action_card
+from src.services.demo_data import (
+    get_energy_history, get_energy_snapshot, get_energy_timeseries,
+    get_event_context, get_operational_summary,
+)
+from src.services.status import get_all_statuses
+from src.utils.page_config import plotly_layout
+
+
+def render_energy_carbon() -> None:
+    energy   = get_energy_snapshot()
+    ops      = get_operational_summary()
+    statuses = get_all_statuses()
+    s        = statuses["energy"]
+    ctx      = get_event_context()
+
+    epf_row        = ops.loc[ops["metric"] == "energy_per_fan"].iloc[0]
+    energy_per_fan = float(epf_row["value"])
+    total_kwh      = energy_per_fan * ctx.attendance
+
+    lighting_row   = energy.loc[energy["system"] == "Lighting"].iloc[0]
+    lighting_share = float(lighting_row["share"])
+
+    history   = get_energy_history(total_kwh)
+    avg_kwh   = history["total_kwh"].mean()
+    delta_kwh = total_kwh - avg_kwh
+
+    banner_cls = {"High": "red", "Medium": "yellow", "Stable": ""}.get(s.status, "")
+
+    st.markdown('<div class="ap-kicker">Energy</div>', unsafe_allow_html=True)
+    st.title("Energy")
+
+    st.markdown(
+        f'<div class="ap-monitor-banner {banner_cls}">'
+        f'<strong>{_html.escape(s.status).upper()}:</strong>&nbsp;{_html.escape(s.headline)}'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    # ── KPI row ───────────────────────────────────────────────────────────────
+    def _kpi(label, value, delta, cls):
+        return (
+            f'<div class="ap-kpi"><div class="kpi-label">{_html.escape(label)}</div>'
+            f'<div class="kpi-value">{_html.escape(value)}</div>'
+            f'<div class="kpi-delta {cls}">{_html.escape(delta)}</div></div>'
+        )
+
+    k1, k2 = st.columns(2)
+    with k1:
+        st.markdown(
+            _kpi("Total energy", f"{total_kwh:,.0f} kWh",
+                 f"{energy_per_fan:.1f} kWh per fan — live estimate", "neu"),
+            unsafe_allow_html=True,
+        )
+    with k2:
+        direction = "▲" if delta_kwh > 0 else "▼"
+        delta_cls = "neg" if delta_kwh > 0 else "pos"
+        st.markdown(
+            _kpi("vs. 10-event avg",
+                 f"{direction} {abs(delta_kwh):,.0f} kWh",
+                 f"Avg: {avg_kwh:,.0f} kWh · {'above' if delta_kwh > 0 else 'below'} average tonight",
+                 delta_cls),
+            unsafe_allow_html=True,
+        )
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── Priority action card (full width) ────────────────────────────────────
+    st.markdown(
+        '<div class="ap-section-header">🎯 Priority actions</div>',
+        unsafe_allow_html=True,
+    )
+
+    if s.status == "High":
+        action_card(
+            title="Lighting vs occupancy divergence",
+            kpi_value=f"{lighting_share:.0%} lighting load",
+            gap_text="Occupancy below 75% — lighting still at full load",
+            insight=(
+                "This is the trigger: occupancy has dropped in confirmed sections while "
+                "lighting remains high. Not just load percentage alone."
+            ),
+            actions=[
+                "Apply adaptive lighting in confirmed low-occupancy sections",
+                "Check HVAC zoning — unoccupied sections may be over-conditioned",
+            ],
+            impact=(
+                f"Lighting is {lighting_share:.0%} of tracked load. "
+                "Adaptive dimming in empty zones is the highest-leverage energy action."
+            ),
+            priority="red",
+        )
+    elif s.status == "Medium":
+        action_card(
+            title="Lighting load — watch for divergence",
+            kpi_value=f"{lighting_share:.0%} lighting load",
+            gap_text="Monitor for occupancy drop in any section",
+            insight=(
+                "Lighting is high but occupancy hasn't diverged yet. "
+                "Watch section-by-section — act when a zone empties out."
+            ),
+            actions=[
+                "Monitor lower bowl sections for occupancy drop",
+                "Pre-identify which zones can be dimmed if needed",
+            ],
+            impact=(
+                "Adaptive lighting is only triggered by actual divergence — "
+                "this prepares the response, not a preventive dim."
+            ),
+            priority="yellow",
+        )
+    else:
+        st.markdown(
+            '<div class="ap-monitor-banner">'
+            '✅ Energy is stable — no occupancy/lighting divergence detected. '
+            'No action required right now.'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ── Energy pace — tonight vs avg ──────────────────────────────────────────
+    if ctx.event_phase == "2ND HALF":
+        current_minute = 90 - ctx.minutes_to_next_phase
+    elif ctx.event_phase == "1ST HALF":
+        current_minute = 45 - ctx.minutes_to_next_phase
+    else:
+        current_minute = 0
+
+    st.markdown(
+        '<div class="ap-section-header">📈 Energy pace — tonight vs average</div>'
+        f'<div class="ap-section-sub">Cumulative kWh through the game · '
+        f'{ctx.event_phase} · {ctx.minutes_to_next_phase} min to {ctx.next_phase}</div>',
+        unsafe_allow_html=True,
+    )
+
+    ts = get_energy_timeseries(total_kwh, current_minute)
+    live_now = ts.dropna(subset=["live_kwh"]).iloc[-1]
+
+    fig_ts = go.Figure()
+
+    # Gray avg line — same style as live line
+    fig_ts.add_trace(go.Scatter(
+        x=ts["minute"], y=ts["avg_kwh"],
+        mode="lines+markers",
+        line={"color": "#6b7a8d", "width": 2},
+        marker={"size": 5, "color": "#6b7a8d"},
+        name="10-event avg",
+        hovertemplate="%{customdata}: %{y:,.0f} kWh avg<extra></extra>",
+        customdata=ts["label"],
+    ))
+    # Cyan live line
+    fig_ts.add_trace(go.Scatter(
+        x=ts["minute"], y=ts["live_kwh"],
+        mode="lines+markers",
+        line={"color": "#16d9e8", "width": 2.5},
+        marker={"size": 5, "color": "#16d9e8"},
+        name="Tonight",
+        connectgaps=False,
+        hovertemplate="%{customdata}: %{y:,.0f} kWh tonight<extra></extra>",
+        customdata=ts["label"],
+    ))
+    # Pulse dot at current position
+    fig_ts.add_trace(go.Scatter(
+        x=[live_now["minute"]], y=[live_now["live_kwh"]],
+        mode="markers",
+        marker={"size": 11, "color": "#16d9e8",
+                "line": {"color": "#101722", "width": 2}},
+        showlegend=False,
+        hoverinfo="skip",
+    ))
+
+    fig_ts.update_layout(
+        yaxis=dict(title="Cumulative kWh", tickformat=","),
+        xaxis=dict(
+            tickvals=ts["minute"].tolist(),
+            ticktext=ts["label"].tolist(),
+            title="",
+        ),
+        legend=dict(
+            orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
+            font=dict(color="#9aa8ba", size=12),
+        ),
+    )
+    st.plotly_chart(plotly_layout(fig_ts, 300), use_container_width=True,
+                    config={"displayModeBar": False})
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+    # ── System detail — load bars ─────────────────────────────────────────────
+    st.subheader("System detail")
+    bar_color_map = {"Monitor": "#e8b84d", "Stable": "#12b981", "High": "#ff5b65"}
+    for row in energy.itertuples(index=False):
+        pill_cls  = str(row.status).lower()
+        bar_color = bar_color_map.get(str(row.status), "#16d9e8")
+        pct_width = f"{row.share:.0%}"
+        st.markdown(
+            f'<div style="background:#151c25;border:1px solid #2b3645;border-radius:10px;'
+            f'padding:10px 14px;margin-bottom:6px;">'
+            f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
+            f'<strong style="color:#f4f7fb;font-size:13px;">{_html.escape(row.system)}</strong>'
+            f'<span class="ap-pill {pill_cls}">{_html.escape(row.status)}</span>'
+            f'</div>'
+            f'<div style="background:#2b3645;border-radius:4px;height:5px;margin-bottom:5px;">'
+            f'<div style="background:{bar_color};width:{pct_width};height:5px;border-radius:4px;"></div>'
+            f'</div>'
+            f'<span style="font-size:11px;color:#9aa8ba;">{pct_width} of tracked load'
+            f' — {_html.escape(row.recommendation)}</span>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+    # ── AI assistant ──────────────────────────────────────────────────────────
+    from src.components.arena_components import ai_chat
+    from src.services.ai_assistant import get_energy_response
+    ai_chat(get_energy_response,
+            placeholder="e.g. Why is lighting load high? What should I watch for at halftime?",
+            input_key="energy_ai_input")
