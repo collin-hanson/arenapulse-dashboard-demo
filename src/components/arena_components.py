@@ -333,28 +333,33 @@ def ai_chat(get_response_fn, placeholder: str, input_key: str) -> None:
                     st.session_state[history_key] = []
                     st.rerun()
 
-        # ── Conversation history ──────────────────────────────────────────────
+        # ── Conversation history (fixed height, scrollable) ───────────────────
+        msgs_html = ""
         for msg in history:
             if msg["role"] == "user":
-                st.markdown(
+                msgs_html += (
                     f'<div style="background:#1a2535;border-radius:8px;padding:10px 14px;margin-bottom:6px;">'
                     f'<div style="font-size:11px;font-weight:700;color:#9aa8ba;'
                     f'text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">You</div>'
                     f'<div style="font-size:13px;color:#f4f7fb;">{_html.escape(msg["content"])}</div>'
-                    f'</div>',
-                    unsafe_allow_html=True,
+                    f'</div>'
                 )
             else:
                 formatted = msg["content"].replace("\n\n", "<br><br>").replace("\n", "<br>")
-                st.markdown(
+                msgs_html += (
                     f'<div style="background:#0d1017;border-left:3px solid #16d9e8;'
                     f'border-radius:8px;padding:10px 14px;margin-bottom:6px;">'
                     f'<div style="font-size:11px;font-weight:700;color:#16d9e8;'
                     f'text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">AI</div>'
                     f'<div style="font-size:13px;color:#f4f7fb;line-height:1.6;">{formatted}</div>'
-                    f'</div>',
-                    unsafe_allow_html=True,
+                    f'</div>'
                 )
+        st.markdown(
+            f'<div style="height:280px;overflow-y:auto;padding-right:4px;margin-bottom:8px;">'
+            f'{msgs_html}'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
 
         # ── Input — counter in key clears field after each submission ─────────
         current_placeholder = placeholder if not history else "Ask a follow-up..."
