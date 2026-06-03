@@ -26,6 +26,12 @@ view = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
+
+_sport_options = {"⚽  Soccer / FIFA": "soccer", "🏈  NFL / American Football": "nfl"}
+_sport_label = st.sidebar.radio("Sport", list(_sport_options.keys()), key="sport_radio")
+st.session_state["sport"] = _sport_options[_sport_label]
+
+st.sidebar.markdown("---")
 st.sidebar.caption(
     "Demo mode — sample data only. "
     "No live POS, payment, or customer data is stored."

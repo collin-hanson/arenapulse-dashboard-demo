@@ -5,8 +5,8 @@ import streamlit as st
 
 from src.components.arena_components import action_card
 from src.services.demo_data import (
-    get_energy_history, get_energy_snapshot, get_energy_timeseries,
-    get_event_context, get_operational_summary,
+    get_current_minute, get_energy_history, get_energy_snapshot,
+    get_energy_timeseries, get_event_context, get_operational_summary,
 )
 from src.services.status import get_all_statuses
 from src.utils.page_config import plotly_layout
@@ -124,12 +124,7 @@ def render_energy_carbon() -> None:
         )
 
     # ── Energy pace — tonight vs avg ──────────────────────────────────────────
-    if ctx.event_phase == "2ND HALF":
-        current_minute = 90 - ctx.minutes_to_next_phase
-    elif ctx.event_phase == "1ST HALF":
-        current_minute = 45 - ctx.minutes_to_next_phase
-    else:
-        current_minute = 0
+    current_minute = get_current_minute(ctx)
 
     st.markdown(
         '<div class="ap-section-header">📈 Energy pace — tonight vs average</div>'

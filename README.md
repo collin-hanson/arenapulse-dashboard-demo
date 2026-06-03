@@ -65,3 +65,4 @@ data/
 - [ ] Live OpenAI API integration (key pending)
 - [ ] Real-time data ingestion layer — multi-format (CSV, Excel, JSON, API), allow-listed, sanitized
 - [ ] Venue configuration — multi-stadium support
+- [ ] After Action Report — post-event summary page consolidating how each sustainability metric performed, any alerts or threshold breaches, and AI-generated narrative (what went well, what didn't, what to adjust for next time). Exportable for leadership. Designed to close the loop from live monitoring into future event planning.

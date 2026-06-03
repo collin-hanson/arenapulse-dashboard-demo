@@ -4,11 +4,59 @@ from dataclasses import dataclass
 
 import numpy as np
 import pandas as pd
+import streamlit as st
 
 from src.services.data_loader import load_excel_workbook
 
 
 DEMO_WORKBOOK = "ArenaPulse_Demo_Data.xlsx"
+
+
+# ── Sport helpers ──────────────────────────────────────────────────────────────
+
+def _get_sport() -> str:
+    """Return 'soccer' or 'nfl' from session state. Defaults to soccer."""
+    return st.session_state.get("sport", "soccer")
+
+
+def _make_time_labels(time_points, sport: str) -> list[str]:
+    """Return x-axis labels appropriate for the current sport."""
+    labels = []
+    for m in time_points:
+        if sport == "nfl":
+            if m < 0:      labels.append("Pre-game")
+            elif m == 0:   labels.append("KO")
+            elif m <= 15:  labels.append("Q1")
+            elif m <= 40:  labels.append("Q2")
+            elif m == 45:  labels.append("HT")
+            elif m <= 65:  labels.append("Q3")
+            elif m <= 85:  labels.append("Q4")
+            elif m == 90:  labels.append("Final")
+            elif m <= 100: labels.append("OT")
+            else:           labels.append("Post")
+        else:
+            if m == -30:   labels.append("Pre-game")
+            elif m < 0:    labels.append(f"{m}'")
+            elif m == 0:   labels.append("KO")
+            elif m == 45:  labels.append("HT")
+            elif m == 90:  labels.append("FT")
+            elif m > 90:   labels.append(f"+{m - 90}'")
+            else:           labels.append(f"{m}'")
+    return labels
+
+
+def get_current_minute(ctx: "EventContext") -> int:
+    """Convert event phase + minutes_to_next_phase to a timeseries minute position."""
+    phase_map = {
+        "1ST HALF": 45,
+        "2ND HALF": 90,
+        "Q1": 15,
+        "Q2": 45,   # HT sits at minute 45 on our shared time axis
+        "Q3": 65,
+        "Q4": 85,
+    }
+    end = phase_map.get(ctx.event_phase.upper(), 0)
+    return max(0, end - ctx.minutes_to_next_phase)
 
 
 @dataclass(frozen=True)
@@ -27,6 +75,20 @@ class EventContext:
 
 
 def get_event_context() -> EventContext:
+    if _get_sport() == "nfl":
+        return EventContext(
+            venue="Pilot Stadium",
+            event_name="NFL — Raiders vs. Chiefs",
+            attendance=68_500,
+            occupancy_rate=0.94,
+            leed_status="LEED Gold",
+            current_diversion_rate=0.21,
+            next_year_target=0.30,
+            platinum_target=0.75,
+            event_phase="Q2",
+            minutes_to_next_phase=12,
+            next_phase="Halftime",
+        )
     data = load_excel_workbook(DEMO_WORKBOOK)["Event_Context"]
     values = dict(zip(data["metric"], data["value"]))
     return EventContext(
@@ -72,16 +134,25 @@ def get_governance_feeds() -> pd.DataFrame:
     return load_excel_workbook(DEMO_WORKBOOK)["Governance_Feeds"].copy()
 
 
-def get_pos_sample() -> pd.DataFrame:
-    return load_excel_workbook(DEMO_WORKBOOK)["POS_Sample"].copy()
-
-
 def get_operational_summary() -> pd.DataFrame:
+    if _get_sport() == "nfl":
+        return pd.DataFrame([
+            {"metric": "energy_per_fan",   "value": 2.4,  "status": "Medium"},
+            {"metric": "carbon_intensity",  "value": 92.1, "status": "Medium"},
+        ])
     return load_excel_workbook(DEMO_WORKBOOK)["Operational_Summary"].copy()
 
 
 def get_water_context() -> pd.DataFrame:
+    if _get_sport() == "nfl":
+        return pd.DataFrame([
+            {"metric": "water_per_attendee", "value": 27.5},
+        ])
     return load_excel_workbook(DEMO_WORKBOOK)["Water_Context"].copy()
+
+
+def get_pos_sample() -> pd.DataFrame:
+    return load_excel_workbook(DEMO_WORKBOOK)["POS_Sample"].copy()
 
 
 def get_zone_status() -> pd.DataFrame:
@@ -104,10 +175,16 @@ def get_waste_diversion_history(current_max_possible: float, n: int = 10) -> pd.
     """
     rng = np.random.default_rng(seed=42)
     dates = pd.date_range(end="2026-04-25", periods=n, freq="2D")
-    # Realistic variation: most events land 46-58%, trending slightly upward
-    base = np.linspace(0.46, 0.52, n)
-    noise = rng.normal(0, 0.025, n)
-    max_possible = np.clip(base + noise, 0.40, 0.65)
+    if _get_sport() == "nfl":
+        # NFL venues historically have lower diversion rates
+        base = np.linspace(0.18, 0.25, n)
+        noise = rng.normal(0, 0.02, n)
+        max_possible = np.clip(base + noise, 0.12, 0.35)
+    else:
+        # Realistic variation: most events land 46-58%, trending slightly upward
+        base = np.linspace(0.46, 0.52, n)
+        noise = rng.normal(0, 0.025, n)
+        max_possible = np.clip(base + noise, 0.40, 0.65)
     return pd.DataFrame({
         "event": [f"Event {i+1}" for i in range(n)],
         "date": dates,
@@ -120,9 +197,14 @@ def get_energy_history(current_kwh: float, n: int = 10) -> pd.DataFrame:
     """Mock total kWh history for past events. Seeded for demo reproducibility."""
     rng = np.random.default_rng(seed=43)
     dates = pd.date_range(end="2026-04-25", periods=n, freq="2D")
-    base = np.linspace(108_000, 118_000, n)
-    noise = rng.normal(0, 4_000, n)
-    totals = np.clip(base + noise, 90_000, 140_000)
+    if _get_sport() == "nfl":
+        base = np.linspace(155_000, 175_000, n)
+        noise = rng.normal(0, 5_000, n)
+        totals = np.clip(base + noise, 130_000, 200_000)
+    else:
+        base = np.linspace(108_000, 118_000, n)
+        noise = rng.normal(0, 4_000, n)
+        totals = np.clip(base + noise, 90_000, 140_000)
     return pd.DataFrame({
         "event": [f"Event {i+1}" for i in range(n)],
         "date": dates,
@@ -147,10 +229,17 @@ def get_energy_timeseries(current_kwh: float, current_minute: int) -> pd.DataFra
 
     # Historical average across 10 past events
     rng = np.random.default_rng(seed=45)
-    past_totals = np.clip(
-        np.linspace(108_000, 118_000, 10) + rng.normal(0, 3_000, 10),
-        90_000, 140_000,
-    )
+    sport = _get_sport()
+    if sport == "nfl":
+        past_totals = np.clip(
+            np.linspace(155_000, 175_000, 10) + rng.normal(0, 5_000, 10),
+            130_000, 200_000,
+        )
+    else:
+        past_totals = np.clip(
+            np.linspace(108_000, 118_000, 10) + rng.normal(0, 3_000, 10),
+            90_000, 140_000,
+        )
     avg_curves = []
     for total in past_totals:
         noise = rng.normal(0, 0.006, len(base_fractions))
@@ -162,19 +251,9 @@ def get_energy_timeseries(current_kwh: float, current_minute: int) -> pd.DataFra
     # Live curve — current_kwh is the projected full-game total; show cumulative up to current_minute
     live_curve = np.where(time_points <= current_minute, base_fractions * current_kwh, np.nan)
 
-    labels = []
-    for m in time_points:
-        if m == -30:  labels.append("Pre-game")
-        elif m < 0:   labels.append(f"{m}'")
-        elif m == 0:  labels.append("KO")
-        elif m == 45: labels.append("HT")
-        elif m == 90: labels.append("FT")
-        elif m > 90:  labels.append(f"+{m - 90}'")
-        else:         labels.append(f"{m}'")
-
     return pd.DataFrame({
         "minute":   time_points,
-        "label":    labels,
+        "label":    _make_time_labels(time_points, sport),
         "avg_kwh":  avg_curve,
         "live_kwh": live_curve,
     })
@@ -265,6 +344,29 @@ def get_section_sales_breakdown() -> list[dict]:
         pass
 
     # Synthetic fallback — seeded for demo reproducibility
+    if _get_sport() == "nfl":
+        return [
+            {
+                "section": "Lower Concourse East", "zone": "C",
+                "recyclable_pct": 0.28, "compostable_pct": 0.10, "landfill_pct": 0.62,
+                "top_items": ["Hot Wings", "Nachos", "Beer Can"],
+            },
+            {
+                "section": "Gate Plaza", "zone": "B",
+                "recyclable_pct": 0.51, "compostable_pct": 0.07, "landfill_pct": 0.42,
+                "top_items": ["Beer Can", "Soda", "Pretzel"],
+            },
+            {
+                "section": "Premium Level", "zone": "D",
+                "recyclable_pct": 0.38, "compostable_pct": 0.15, "landfill_pct": 0.47,
+                "top_items": ["Whiskey Cup", "Burger", "Beer Can"],
+            },
+            {
+                "section": "Upper Concourse West", "zone": "A",
+                "recyclable_pct": 0.35, "compostable_pct": 0.18, "landfill_pct": 0.47,
+                "top_items": ["Popcorn", "Hot Dog", "Beer Can"],
+            },
+        ]
     return [
         {
             "section": "Lower Concourse East", "zone": "C",
@@ -352,10 +454,17 @@ def get_water_timeseries(current_litres: float, current_minute: int) -> pd.DataF
     ])
 
     rng = np.random.default_rng(seed=49)
-    past_totals = np.clip(
-        np.linspace(1_400_000, 1_600_000, 10) + rng.normal(0, 60_000, 10),
-        1_100_000, 2_000_000,
-    )
+    sport = _get_sport()
+    if sport == "nfl":
+        past_totals = np.clip(
+            np.linspace(1_800_000, 2_100_000, 10) + rng.normal(0, 80_000, 10),
+            1_500_000, 2_500_000,
+        )
+    else:
+        past_totals = np.clip(
+            np.linspace(1_400_000, 1_600_000, 10) + rng.normal(0, 60_000, 10),
+            1_100_000, 2_000_000,
+        )
     avg_curves = []
     for total in past_totals:
         noise = rng.normal(0, 0.006, len(base_fractions))
@@ -366,19 +475,9 @@ def get_water_timeseries(current_litres: float, current_minute: int) -> pd.DataF
 
     live_curve = np.where(time_points <= current_minute, base_fractions * current_litres, np.nan)
 
-    labels = []
-    for m in time_points:
-        if m == -30:  labels.append("Pre-game")
-        elif m < 0:   labels.append(f"{m}'")
-        elif m == 0:  labels.append("KO")
-        elif m == 45: labels.append("HT")
-        elif m == 90: labels.append("FT")
-        elif m > 90:  labels.append(f"+{m - 90}'")
-        else:         labels.append(f"{m}'")
-
     return pd.DataFrame({
         "minute":      time_points,
-        "label":       labels,
+        "label":       _make_time_labels(time_points, sport),
         "avg_litres":  avg_curve,
         "live_litres": live_curve,
     })
@@ -388,9 +487,14 @@ def get_water_history(current_litres: float, n: int = 10) -> pd.DataFrame:
     """Mock total litres history for past events. Seeded for demo reproducibility."""
     rng = np.random.default_rng(seed=44)
     dates = pd.date_range(end="2026-04-25", periods=n, freq="2D")
-    base = np.linspace(1_400_000, 1_600_000, n)
-    noise = rng.normal(0, 60_000, n)
-    totals = np.clip(base + noise, 1_100_000, 2_000_000)
+    if _get_sport() == "nfl":
+        base = np.linspace(1_800_000, 2_100_000, n)
+        noise = rng.normal(0, 80_000, n)
+        totals = np.clip(base + noise, 1_500_000, 2_500_000)
+    else:
+        base = np.linspace(1_400_000, 1_600_000, n)
+        noise = rng.normal(0, 60_000, n)
+        totals = np.clip(base + noise, 1_100_000, 2_000_000)
     return pd.DataFrame({
         "event": [f"Event {i+1}" for i in range(n)],
         "date": dates,

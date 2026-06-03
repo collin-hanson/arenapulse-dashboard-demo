@@ -4,8 +4,8 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from src.services.demo_data import (
-    get_event_context, get_water_context, get_water_history,
-    get_water_timeseries, get_water_by_system,
+    get_current_minute, get_event_context, get_water_context,
+    get_water_history, get_water_timeseries, get_water_by_system,
 )
 from src.services.status import get_all_statuses
 from src.utils.page_config import plotly_layout
@@ -66,12 +66,7 @@ def render_water_usage() -> None:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Water pace — tonight vs avg ───────────────────────────────────────────
-    if ctx.event_phase == "2ND HALF":
-        current_minute = 90 - ctx.minutes_to_next_phase
-    elif ctx.event_phase == "1ST HALF":
-        current_minute = 45 - ctx.minutes_to_next_phase
-    else:
-        current_minute = 0
+    current_minute = get_current_minute(ctx)
 
     st.markdown(
         '<div class="ap-section-header">📈 Water pace — tonight vs average</div>'
