@@ -297,32 +297,85 @@ def risk_alert_banner(zone_data: dict, zone_names: dict | None = None) -> None:
 
 def ai_chat(get_response_fn, placeholder: str, input_key: str) -> None:
     """
-    Reusable AI assistant chat box.
-    get_response_fn: callable that takes a question str and returns a response str.
-    placeholder: hint text shown in the input field.
-    input_key: unique Streamlit key for the text_input widget.
+    Reusable AI assistant chat box with multi-turn conversation history.
+    get_response_fn: callable(question, history) → response str.
+    placeholder: hint text shown on first message.
+    input_key: unique Streamlit key prefix for this chat instance.
     """
     from src.services.ai_assistant import stream_response
 
+    history_key = f"{input_key}_history"
+    counter_key = f"{input_key}_counter"
+
+    if history_key not in st.session_state:
+        st.session_state[history_key] = []
+    if counter_key not in st.session_state:
+        st.session_state[counter_key] = 0
+
+    history = st.session_state[history_key]
+
     st.markdown("<br>", unsafe_allow_html=True)
     with st.container(border=True):
-        st.markdown(
-            '<div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">'
-            '<span style="font-size:18px;">🤖</span>'
-            '<span style="font-size:14px;font-weight:700;color:#f4f7fb;">AI Assistant</span>'
-            '</div>',
-            unsafe_allow_html=True,
-        )
+
+        # ── Header + clear button ─────────────────────────────────────────────
+        h_col, c_col = st.columns([5, 1])
+        with h_col:
+            st.markdown(
+                '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
+                '<span style="font-size:18px;">🤖</span>'
+                '<span style="font-size:14px;font-weight:700;color:#f4f7fb;">AI Assistant</span>'
+                '</div>',
+                unsafe_allow_html=True,
+            )
+        with c_col:
+            if history:
+                if st.button("Clear", key=f"{input_key}_clear", use_container_width=True):
+                    st.session_state[history_key] = []
+                    st.rerun()
+
+        # ── Conversation history ──────────────────────────────────────────────
+        for msg in history:
+            if msg["role"] == "user":
+                st.markdown(
+                    f'<div style="background:#1a2535;border-radius:8px;padding:10px 14px;margin-bottom:6px;">'
+                    f'<div style="font-size:11px;font-weight:700;color:#9aa8ba;'
+                    f'text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">You</div>'
+                    f'<div style="font-size:13px;color:#f4f7fb;">{_html.escape(msg["content"])}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                formatted = msg["content"].replace("\n\n", "<br><br>").replace("\n", "<br>")
+                st.markdown(
+                    f'<div style="background:#0d1017;border-left:3px solid #16d9e8;'
+                    f'border-radius:8px;padding:10px 14px;margin-bottom:6px;">'
+                    f'<div style="font-size:11px;font-weight:700;color:#16d9e8;'
+                    f'text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">AI</div>'
+                    f'<div style="font-size:13px;color:#f4f7fb;line-height:1.6;">{formatted}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+
+        # ── Input — counter in key clears field after each submission ─────────
+        current_placeholder = placeholder if not history else "Ask a follow-up..."
         question = st.text_input(
             "Ask a question",
-            placeholder=placeholder,
+            placeholder=current_placeholder,
             label_visibility="collapsed",
-            key=input_key,
+            key=f"{input_key}_{st.session_state[counter_key]}",
         )
+
         if question:
-            response = get_response_fn(question)
+            # Capture history before appending this turn
+            prior_history = list(history)
+            st.session_state[history_key].append({"role": "user", "content": question})
+
+            # Get response — passes full prior history for Gemini multi-turn context
+            response = get_response_fn(question, prior_history)
+
+            # Stream the response live before rerun
             st.markdown(
-                '<div style="margin-top:4px;padding:14px 16px;background:#0d1017;'
+                '<div style="margin-top:8px;padding:14px 16px;background:#0d1017;'
                 'border-left:3px solid #16d9e8;border-radius:8px;">'
                 '<div style="font-size:11px;font-weight:700;color:#16d9e8;'
                 'text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">AI</div>',
@@ -330,3 +383,8 @@ def ai_chat(get_response_fn, placeholder: str, input_key: str) -> None:
             )
             st.write_stream(stream_response(response))
             st.markdown('</div>', unsafe_allow_html=True)
+
+            # Store response, clear input on next render
+            st.session_state[history_key].append({"role": "assistant", "content": response})
+            st.session_state[counter_key] += 1
+            st.rerun()

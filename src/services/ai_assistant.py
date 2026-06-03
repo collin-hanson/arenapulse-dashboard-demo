@@ -15,19 +15,6 @@ import streamlit as st
 
 # ── Gemini integration ─────────────────────────────────────────────────────────
 
-def _get_model():
-    """Return a configured Gemini model, or None if no API key is available."""
-    try:
-        api_key = st.secrets.get("GEMINI_API_KEY")
-        if not api_key:
-            return None
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        return genai.GenerativeModel("gemini-1.5-flash")
-    except Exception:
-        return None
-
-
 def _base_context() -> str:
     """Build a live event context string to anchor Gemini responses."""
     try:
@@ -56,17 +43,37 @@ def _base_context() -> str:
         )
 
 
-def _ask_gemini(page_context: str, question: str) -> str | None:
+def _ask_gemini(
+    page_context: str,
+    question: str,
+    history: list[dict] | None = None,
+) -> str | None:
     """
-    Send a question to Gemini with event + page context.
-    Returns the response text, or None if the call fails or no key is set.
+    Send a question to Gemini with event context, page context, and conversation history.
+    history: list of {"role": "user"|"assistant", "content": "..."} dicts.
+    Returns the response text, or None if the call fails or no key is configured.
     """
-    model = _get_model()
-    if not model:
-        return None
     try:
-        prompt = f"{_base_context()}\n\nPage context: {page_context}\n\nQuestion: {question}"
-        response = model.generate_content(prompt)
+        api_key = st.secrets.get("GEMINI_API_KEY")
+        if not api_key:
+            return None
+        import google.generativeai as genai
+        genai.configure(api_key=api_key)
+
+        system_instruction = f"{_base_context()}\n\nPage context: {page_context}"
+        model = genai.GenerativeModel(
+            "gemini-1.5-flash",
+            system_instruction=system_instruction,
+        )
+
+        # Convert history to Gemini's {"role", "parts"} format
+        gemini_history = []
+        for msg in (history or []):
+            role = "user" if msg["role"] == "user" else "model"
+            gemini_history.append({"role": role, "parts": [msg["content"]]})
+
+        chat = model.start_chat(history=gemini_history)
+        response = chat.send_message(question)
         return response.text.strip()
     except Exception:
         return None
@@ -440,48 +447,48 @@ OVERVIEW_FALLBACK = (
 
 # ── Public API ─────────────────────────────────────────────────────────────────
 
-def get_waste_response(question: str) -> str:
+def get_waste_response(question: str, history: list[dict] | None = None) -> str:
     result = _ask_gemini(
         "Waste Intelligence page. Topics: diversion rates, bin placement by zone, "
         "POS packaging mix, green team ambassador actions, procurement flags.",
-        question,
+        question, history,
     )
     return result or _match(question, WASTE_RESPONSES, WASTE_FALLBACK)
 
 
-def get_energy_response(question: str) -> str:
+def get_energy_response(question: str, history: list[dict] | None = None) -> str:
     result = _ask_gemini(
         "Energy & Carbon page. Topics: total energy load, lighting vs occupancy divergence, "
         "HVAC zoning, adaptive dimming actions, energy pace vs historical average.",
-        question,
+        question, history,
     )
     return result or _match(question, ENERGY_RESPONSES, ENERGY_FALLBACK)
 
 
-def get_water_response(question: str) -> str:
+def get_water_response(question: str, history: list[dict] | None = None) -> str:
     result = _ask_gemini(
         "Water Usage page. Topics: total water consumption, L per fan vs 20 L guide, "
         "restroom demand peaks, system breakdown (restrooms 67%, concessions 19%, "
         "HVAC 9%, irrigation 5%), halftime surge preparation.",
-        question,
+        question, history,
     )
     return result or _match(question, WATER_RESPONSES, WATER_FALLBACK)
 
 
-def get_env_response(question: str) -> str:
+def get_env_response(question: str, history: list[dict] | None = None) -> str:
     result = _ask_gemini(
         "Environmental Health page. Topics: outdoor temperature, AQI, humidity, "
         "crowd density, heat stress risk, egress status, water station restocking.",
-        question,
+        question, history,
     )
     return result or _match(question, ENV_RESPONSES, ENV_FALLBACK)
 
 
-def get_overview_response(question: str) -> str:
+def get_overview_response(question: str, history: list[dict] | None = None) -> str:
     result = _ask_gemini(
         "Overview / Decision Board page. This is the main ops dashboard showing all four "
         "systems: Waste (High), Energy (Medium), Water (Medium), Environmental Health (Medium). "
         "Focus on cross-system priorities and what to do before halftime.",
-        question,
+        question, history,
     )
     return result or _match(question, OVERVIEW_RESPONSES, OVERVIEW_FALLBACK)

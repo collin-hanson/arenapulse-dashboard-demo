@@ -193,6 +193,10 @@ def render_executive_scorecard() -> None:
     with map_col:
         fig = stadium_zone_map(zone_data, title="Zone density · live ticket data")
         st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+        st.caption(
+            "Zone density is pulled from turnstile scans and ticketing system APIs in production. "
+            "In this demo, values are simulated to reflect a real high-attendance event."
+        )
 
     with alert_col:
         from src.components.arena_components import ai_chat
