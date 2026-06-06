@@ -65,10 +65,10 @@ def render_after_action_report() -> None:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Overall score ─────────────────────────────────────────────────────────
-    waste_met  = d["final_diversion_pct"] >= d["diversion_target_pct"]
-    energy_met = d["final_kwh_per_fan"]   <= d["energy_benchmark_kwh"]
-    water_met  = d["final_lpf"]           <= d["water_guide_lpf"]
-    env_met    = d["env_incidents"]       == 0
+    waste_met  = d["max_possible_diversion_pct"] >= d["max_div_target_pct"]
+    energy_met = d["final_kwh_per_fan"]          <= d["energy_benchmark_kwh"]
+    water_met  = d["fixture_faults"]             == 0 and d["restroom_check_done"]
+    env_met    = d["env_incidents"]              == 0
     targets_hit = sum([waste_met, energy_met, water_met, env_met])
 
     score_color = "#12b981" if targets_hit >= 3 else "#e8b84d" if targets_hit == 2 else "#ff5b65"
@@ -96,12 +96,13 @@ def render_after_action_report() -> None:
     with c1:
         st.markdown(_system_card(
             "♻️", "Waste",
-            actual=f"{d['final_diversion_pct']}% diversion",
-            target=f"{d['diversion_target_pct']}% diversion",
+            actual=f"{d['max_possible_diversion_pct']}% max possible diversion",
+            target=f"{d['max_div_target_pct']}% target",
             met=waste_met,
             insight=(
-                "Food-heavy packaging mix in Lower Concourse East was the primary constraint. "
-                "Procurement switch to compostable serveware is the highest-leverage long-term action."
+                "Max possible diversion is set by the packaging mix sold — ops can't exceed it "
+                "no matter how well bins are staffed. To raise this ceiling, switch high-landfill "
+                "items to compostable or recyclable packaging at the procurement level."
             ),
         ), unsafe_allow_html=True)
     with c2:
@@ -111,8 +112,9 @@ def render_after_action_report() -> None:
             target=f"{d['energy_benchmark_kwh']:.1f} kWh/fan benchmark",
             met=energy_met,
             insight=(
-                "Lighting load stayed elevated through second half. Adaptive dimming was not "
-                "triggered — occupancy divergence threshold was not reached in any section."
+                "Adaptive dimming was not triggered — occupancy never diverged from lighting "
+                "load in any section. Pre-configure dimming zones before next event so the "
+                "response is immediate when the trigger hits."
             ),
         ), unsafe_allow_html=True)
 
@@ -120,26 +122,29 @@ def render_after_action_report() -> None:
 
     c3, c4 = st.columns(2)
     with c3:
+        fault_text = f"{d['fixture_faults']} fixture fault{'s' if d['fixture_faults'] != 1 else ''} detected" if d["fixture_faults"] else "No fixture faults detected"
+        check_text = "Pre-halftime restroom check completed" if d["restroom_check_done"] else "Pre-halftime restroom check not completed"
         st.markdown(_system_card(
             "💧", "Water",
-            actual=f"{d['final_lpf']:.1f} L/fan",
-            target=f"{d['water_guide_lpf']:.0f} L/fan guide",
+            actual=check_text,
+            target="Pre-halftime check + zero fixture faults",
             met=water_met,
             insight=(
-                "Usage above guide driven by restroom demand at high occupancy. "
-                "No fixture faults detected. Submeters showed no anomalies post-event."
+                f"{fault_text}. Water usage was {d['final_lpf']:.1f} L/fan — above the 20 L "
+                "guide but driven by attendance, not a fault. The pre-halftime restroom check "
+                "is the one controllable action that prevents fan-facing incidents."
             ),
         ), unsafe_allow_html=True)
     with c4:
         st.markdown(_system_card(
             "🌿", "Environmental Health",
-            actual=f"{d['peak_density_pct']}% peak density",
-            target="No heat/AQI incidents",
+            actual="0 fan incidents",
+            target="No heat or AQI incidents",
             met=env_met,
             insight=(
                 f"Peak conditions: {d['peak_temp_f']}°F, AQI {d['peak_aqi']}, "
-                f"{d['peak_humidity_pct']}% humidity. No medical incidents reported. "
-                "Water station restocks were completed before halftime."
+                f"{d['peak_humidity_pct']}% humidity. Water stations restocked before halftime. "
+                "Proactive positioning of water stations and medical staff is what kept this clean."
             ),
         ), unsafe_allow_html=True)
 

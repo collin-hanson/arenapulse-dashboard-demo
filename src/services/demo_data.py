@@ -184,10 +184,13 @@ def get_post_event_summary() -> dict:
             "peak_temp_f":         79,
             "peak_aqi":            58,
             "peak_humidity_pct":   62,
-            # Waste
-            "final_diversion_pct": 23,
-            "diversion_target_pct": 30,
+            # Waste — max possible diversion (ceiling set by packaging mix)
+            "max_possible_diversion_pct": 28,
+            "max_div_target_pct":  35,
             "total_waste_lb":      8_240,
+            # Water
+            "restroom_check_done": True,
+            "fixture_faults":      1,
             # Energy
             "final_kwh_per_fan":   2.6,
             "energy_benchmark_kwh": 2.4,
@@ -222,17 +225,19 @@ def get_post_event_summary() -> dict:
             "peak_temp_f":         78,
             "peak_aqi":            52,
             "peak_humidity_pct":   65,
-            # Waste
-            "final_diversion_pct": 31,
-            "diversion_target_pct": 35,
+            # Waste — max possible diversion (ceiling set by packaging mix)
+            "max_possible_diversion_pct": 54,
+            "max_div_target_pct":  50,
             "total_waste_lb":      6_890,
             # Energy
             "final_kwh_per_fan":   1.9,
             "energy_benchmark_kwh": 1.5,
             "total_kwh":           121_980,
-            # Water
+            # Water — restroom check completed, no faults
             "final_lpf":           25.1,
             "water_guide_lpf":     20.0,
+            "restroom_check_done": True,
+            "fixture_faults":      0,
             "total_litres":        1_611_420,
             # Environmental
             "peak_density_pct":    93,

@@ -163,6 +163,7 @@ def render_waste_intelligence() -> None:
         "title":    "Diversion opportunity — act now",
         "kpi":      f"{top.waste_lbs:,} lb",
         "gap":      f"{top.section} — {top.risk} risk",
+        "key":      "waste_diversion",
         "insight":  (
             f"Highest waste volume section — food-heavy, best chance to lift diversion "
             f"before {ctx.next_phase} in {ctx.minutes_to_next_phase} min."
@@ -183,6 +184,7 @@ def render_waste_intelligence() -> None:
             "title":    "Overflow bin risk",
             "kpi":      f"{gr.waste_lbs:,} lb",
             "gap":      "Gate Plaza — bins near capacity before halftime",
+            "key":      "waste_overflow",
             "insight":  f"Halftime surge in {ctx.minutes_to_next_phase} min will push existing bins over capacity.",
             "actions":  ["Move overflow bins to Gate Plaza now", "Pre-position 2 extra compost bins"],
             "impact":   "Prevents overflow and fan complaints at peak halftime volume.",
@@ -197,6 +199,7 @@ def render_waste_intelligence() -> None:
                     title=a["title"], kpi_value=a["kpi"], gap_text=a["gap"],
                     insight=a["insight"], actions=a["actions"],
                     impact=a["impact"], priority=a["priority"],
+                    card_key=a.get("key"),
                 )
 
     st.markdown("<br>", unsafe_allow_html=True)

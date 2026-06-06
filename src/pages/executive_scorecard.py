@@ -70,6 +70,7 @@ def _collect_live_actions(statuses, zones, ctx) -> list[dict]:
             "title":    "Waste response",
             "kpi":      f"{density_pct}% density",
             "gap":      f"{top_zone.zone} — highest diversion leverage",
+            "key":      "ov_waste_response",
             "insight":  f"Food-heavy waste + high density = best chance to lift diversion before {ctx.next_phase}.",
             "actions": [
                 f"Redirect green team ambassador to {top_zone.zone}",
@@ -85,6 +86,7 @@ def _collect_live_actions(statuses, zones, ctx) -> list[dict]:
                 "title":    "Overflow bin risk",
                 "kpi":      f"Bins at capacity by halftime",
                 "gap":      f"Gate Plaza — bins will overflow during halftime surge",
+                "key":      "ov_overflow",
                 "insight":  f"Existing bins will hit capacity during the halftime surge in {ctx.minutes_to_next_phase} min.",
                 "actions":  ["Move overflow bins to Gate Plaza now"],
                 "impact":   "Prevents bin overflow and fan complaints at peak halftime volume.",
@@ -97,6 +99,7 @@ def _collect_live_actions(statuses, zones, ctx) -> list[dict]:
             "title":    "Halftime restroom prep",
             "kpi":      f"{ctx.minutes_to_next_phase} min to {ctx.next_phase}",
             "gap":      "Lower Concourse East — restroom surge approaching",
+            "key":      "ov_restroom",
             "insight":  "High density drives restroom demand spikes. Catch blockages before the surge.",
             "actions": [
                 f"Walk restroom banks at Lower Concourse East before {ctx.next_phase}",
@@ -112,6 +115,7 @@ def _collect_live_actions(statuses, zones, ctx) -> list[dict]:
             "title":    "Hydration demand",
             "kpi":      "78°F · 65% humidity",
             "gap":      "Gate Plaza + Lower Concourse East — water stations",
+            "key":      "ov_hydration",
             "insight":  "Heat + humidity + 84% avg density = sharp hydration demand spike at halftime.",
             "actions":  ["Restock water stations at Gate Plaza and Lower Concourse East"],
             "impact":   "Reduces heat exhaustion risk and prevents empty-station complaints.",
@@ -124,6 +128,7 @@ def _collect_live_actions(statuses, zones, ctx) -> list[dict]:
             "title":    "Lighting vs occupancy",
             "kpi":      "High load · Low occupancy",
             "gap":      "Low-occupancy sections still fully lit",
+            "key":      "ov_lighting",
             "insight":  "Occupancy has dropped below 75% while lighting load stays high — act now.",
             "actions":  ["Apply adaptive lighting in confirmed low-occupancy sections"],
             "impact":   "Direct energy reduction — occupancy/lighting divergence is the trigger.",
@@ -229,6 +234,7 @@ def render_executive_scorecard() -> None:
             title=a["title"], kpi_value=a["kpi"], gap_text=a["gap"],
             insight=a["insight"], actions=a["actions"], impact=a["impact"],
             priority=a["priority"], compact=True, priority_num=1,
+            card_key=a.get("key"),
         )
         # Remaining actions — up to 3 per row
         rest = live_actions[1:]
@@ -240,4 +246,5 @@ def render_executive_scorecard() -> None:
                         title=a["title"], kpi_value=a["kpi"], gap_text=a["gap"],
                         insight=a["insight"], actions=a["actions"], impact=a["impact"],
                         priority=a["priority"], compact=True, priority_num=i + 2,
+                        card_key=a.get("key"),
                     )

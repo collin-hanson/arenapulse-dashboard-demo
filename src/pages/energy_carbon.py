@@ -94,6 +94,7 @@ def render_energy_carbon() -> None:
                 "Adaptive dimming in empty zones is the highest-leverage energy action."
             ),
             priority="red",
+            card_key="energy_lighting_high",
         )
     elif s.status == "Medium":
         action_card(
@@ -113,6 +114,7 @@ def render_energy_carbon() -> None:
                 "this prepares the response, not a preventive dim."
             ),
             priority="yellow",
+            card_key="energy_lighting_medium",
         )
     else:
         st.markdown(
