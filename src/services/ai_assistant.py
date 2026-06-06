@@ -177,11 +177,8 @@ WASTE_RESPONSES: list[tuple[list[str], str]] = [
 ]
 
 WASTE_FALLBACK = (
-    "Based on tonight's data, the highest-leverage action is redirecting your green team "
-    "ambassador to Lower Concourse East and moving overflow bins to Gate Plaza before halftime.\n\n"
-    "The 54% max possible diversion ceiling is set by the packaging mix sold tonight — "
-    "the gap between current diversion and that ceiling is closeable through bin placement "
-    "and ambassador coverage in the right zones."
+    "I can help with diversion rates, bin placement, zone priorities, or what to do before "
+    "halftime. What do you need?"
 )
 
 
@@ -244,10 +241,8 @@ ENERGY_RESPONSES: list[tuple[list[str], str]] = [
 ]
 
 ENERGY_FALLBACK = (
-    "Tonight's energy is running slightly above average at 1.8 kWh per fan. The main "
-    "thing to watch is lighting vs occupancy divergence — if any section empties at "
-    "halftime while lighting stays at full load, that's the trigger to apply adaptive dimming.\n\n"
-    "Lighting accounts for 73% of tracked load, so it's the highest-leverage system."
+    "I can help with energy load, lighting vs occupancy, HVAC, or what to watch at halftime. "
+    "What do you need?"
 )
 
 
@@ -299,11 +294,8 @@ WATER_RESPONSES: list[tuple[list[str], str]] = [
 ]
 
 WATER_FALLBACK = (
-    "Water is in monitor mode tonight. Usage is slightly above average, which is expected "
-    "at 91% occupancy.\n\n"
-    "The one action available before halftime: walk the restroom banks at Lower Concourse "
-    "East to catch any fixture fault before the surge hits. Everything else — leak detection, "
-    "irrigation, HVAC cooling — is passive and stable."
+    "I can help with water usage, restroom demand, system breakdown, or leak detection. "
+    "What do you need?"
 )
 
 
@@ -364,11 +356,8 @@ ENV_RESPONSES: list[tuple[list[str], str]] = [
 ]
 
 ENV_FALLBACK = (
-    "Tonight's environmental conditions are at a Medium monitoring level — 78°F outdoor, "
-    "65% humidity, and 84% average crowd density. No single factor is critical, but the "
-    "combination elevates heat stress risk, particularly in enclosed sections.\n\n"
-    "Main things to watch before halftime: water station levels at Gate Plaza and Lower "
-    "Concourse East, and fan welfare in high-density enclosed areas."
+    "I can help with heat stress risk, AQI, crowd density, hydration demand, or egress. "
+    "What do you need?"
 )
 
 
@@ -438,10 +427,14 @@ OVERVIEW_RESPONSES: list[tuple[list[str], str]] = [
 ]
 
 OVERVIEW_FALLBACK = (
-    "Right now the highest priority is waste response — redirect your green team ambassador "
-    "to Lower Concourse East and move overflow bins to Gate Plaza before halftime.\n\n"
-    "All four systems are active: Waste is High, Energy and Water are Medium, Environmental "
-    "Health is Medium. The Waste page has the most actionable decisions right now."
+    "I can help with any of the four systems — waste, energy, water, or environmental health — "
+    "or give you a rundown of what to prioritise right now. What do you need?"
+)
+
+
+AAR_FALLBACK = (
+    "I can help you think through what to do differently next event — ask about waste, "
+    "energy, water, staffing, or anything else from tonight."
 )
 
 
@@ -492,3 +485,14 @@ def get_overview_response(question: str, history: list[dict] | None = None) -> s
         question, history,
     )
     return result or _match(question, OVERVIEW_RESPONSES, OVERVIEW_FALLBACK)
+
+
+def get_aar_response(question: str, history: list[dict] | None = None) -> str:
+    result = _ask_gemini(
+        "After Action Report page. The event has ended. You are helping the operations manager "
+        "reflect on what happened and prepare for the next event. Topics: what went well, "
+        "what missed targets, what actions to take before the next event, procurement changes, "
+        "staffing improvements, bin placement strategy, energy and water benchmarks.",
+        question, history,
+    )
+    return result or AAR_FALLBACK

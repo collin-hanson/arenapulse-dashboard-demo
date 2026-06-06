@@ -3,7 +3,7 @@ import html as _html
 import streamlit as st
 
 from src.services.demo_data import get_post_event_summary
-from src.services.ai_assistant import get_overview_response
+from src.services.ai_assistant import get_aar_response
 from src.components.arena_components import ai_chat
 
 
@@ -181,7 +181,7 @@ def render_after_action_report() -> None:
         unsafe_allow_html=True,
     )
     ai_chat(
-        get_overview_response,
+        get_aar_response,
         placeholder="e.g. What should we do differently next event? What were the biggest gaps tonight?",
         input_key="aar_ai_input",
     )
