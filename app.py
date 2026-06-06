@@ -1,5 +1,6 @@
 import streamlit as st
 
+from src.pages.after_action_report import render_after_action_report
 from src.pages.energy_carbon import render_energy_carbon
 from src.pages.environmental_health import render_environmental_health
 from src.pages.executive_scorecard import render_executive_scorecard
@@ -22,7 +23,7 @@ env_label    = f"{status_emoji(statuses['environment'].status)} Environmental He
 
 view = st.sidebar.radio(
     "Navigation",
-    ["Overview", energy_label, waste_label, water_label, env_label],
+    ["Overview", energy_label, waste_label, water_label, env_label, "📋 After Action Report"],
 )
 
 st.sidebar.markdown("---")
@@ -45,5 +46,7 @@ elif view == waste_label:
     render_waste_intelligence()
 elif view == water_label:
     render_water_usage()
+elif view == "📋 After Action Report":
+    render_after_action_report()
 else:
     render_environmental_health()

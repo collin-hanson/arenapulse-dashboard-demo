@@ -167,6 +167,90 @@ def get_environmental_risk() -> pd.DataFrame:
     return load_excel_workbook(DEMO_WORKBOOK)["Environmental_Risk"].copy()
 
 
+def get_post_event_summary() -> dict:
+    """
+    Simulated final event metrics for the After Action Report.
+    Represents a completed event — values are end-of-game totals.
+    """
+    sport = _get_sport()
+    if sport == "nfl":
+        return {
+            "event_name":          "NFL — Raiders vs. Chiefs",
+            "venue":               "Pilot Stadium",
+            "date":                "June 6, 2026",
+            "attendance":          68_500,
+            "occupancy_rate":      0.94,
+            "duration_min":        210,
+            "peak_temp_f":         79,
+            "peak_aqi":            58,
+            "peak_humidity_pct":   62,
+            # Waste
+            "final_diversion_pct": 23,
+            "diversion_target_pct": 30,
+            "total_waste_lb":      8_240,
+            # Energy
+            "final_kwh_per_fan":   2.6,
+            "energy_benchmark_kwh": 2.4,
+            "total_kwh":           178_100,
+            # Water
+            "final_lpf":           28.2,
+            "water_guide_lpf":     20.0,
+            "total_litres":        1_931_700,
+            # Environmental
+            "peak_density_pct":    94,
+            "env_incidents":       0,
+            # Notable moments
+            "incidents": [
+                "Gate Plaza bins reached 95% capacity during Q3 surge",
+                "Restroom fixture fault flagged in Lower Concourse East — resolved in 8 min",
+                "Zone B density peaked at 94% at halftime",
+            ],
+            "actions_taken": [
+                "Overflow bins repositioned to Gate Plaza before halftime",
+                "Maintenance dispatched to Lower Concourse East restrooms",
+                "Green team redirected to Lower Concourse East at Q2",
+            ],
+        }
+    else:
+        return {
+            "event_name":          "Soccer — Pilot FC vs. Riverside United",
+            "venue":               "Pilot Stadium",
+            "date":                "June 6, 2026",
+            "attendance":          64_200,
+            "occupancy_rate":      0.91,
+            "duration_min":        135,
+            "peak_temp_f":         78,
+            "peak_aqi":            52,
+            "peak_humidity_pct":   65,
+            # Waste
+            "final_diversion_pct": 31,
+            "diversion_target_pct": 35,
+            "total_waste_lb":      6_890,
+            # Energy
+            "final_kwh_per_fan":   1.9,
+            "energy_benchmark_kwh": 1.5,
+            "total_kwh":           121_980,
+            # Water
+            "final_lpf":           25.1,
+            "water_guide_lpf":     20.0,
+            "total_litres":        1_611_420,
+            # Environmental
+            "peak_density_pct":    93,
+            "env_incidents":       0,
+            # Notable moments
+            "incidents": [
+                "Gate Plaza bins reached overflow capacity at halftime",
+                "Zone B density peaked at 92% during halftime surge",
+                "Water usage 25% above 20 L guide — restroom demand driven by high occupancy",
+            ],
+            "actions_taken": [
+                "Overflow bins repositioned to Gate Plaza 15 min before halftime",
+                "Green team ambassador redirected to Lower Concourse East at 30'",
+                "Compost signage placed at hot food vendor stands in Zone C",
+            ],
+        }
+
+
 def get_waste_diversion_history(current_max_possible: float, n: int = 10) -> pd.DataFrame:
     """
     Generate realistic mock max-possible diversion history for past events.
