@@ -167,6 +167,39 @@ def get_environmental_risk() -> pd.DataFrame:
     return load_excel_workbook(DEMO_WORKBOOK)["Environmental_Risk"].copy()
 
 
+def get_env_timeseries(current_minute: int) -> pd.DataFrame:
+    """
+    Temp (°F) and AQI trend through the event.
+    Columns: minute, label, temp_f, aqi.
+    live_temp / live_aqi are NaN after current_minute.
+    """
+    sport = _get_sport()
+    if sport == "nfl":
+        time_points = np.array([-30, -15, 0, 15, 30, 45, 60, 75, 90, 105, 120])
+        base_temp   = np.array([74, 75, 76, 77, 78, 79, 79, 78, 77, 76, 75], dtype=float)
+        base_aqi    = np.array([44, 46, 48, 50, 52, 55, 57, 56, 55, 54, 53], dtype=float)
+    else:
+        time_points = np.array([-30, -15, 0, 15, 30, 45, 60, 75, 90])
+        base_temp   = np.array([74, 75, 76, 77, 78, 78, 79, 78, 77], dtype=float)
+        base_aqi    = np.array([42, 44, 47, 50, 52, 53, 55, 54, 52], dtype=float)
+
+    rng   = np.random.default_rng(seed=77)
+    noise_t = rng.normal(0, 0.3, len(time_points))
+    noise_a = rng.normal(0, 1.0, len(time_points))
+
+    live_temp = np.where(time_points <= current_minute, base_temp + noise_t, np.nan)
+    live_aqi  = np.where(time_points <= current_minute, base_aqi  + noise_a, np.nan)
+
+    return pd.DataFrame({
+        "minute":    time_points,
+        "label":     _make_time_labels(time_points, sport),
+        "temp_f":    base_temp + noise_t,   # full line (lighter, for context)
+        "aqi":       base_aqi  + noise_a,
+        "live_temp": live_temp,
+        "live_aqi":  live_aqi,
+    })
+
+
 def get_post_event_summary() -> dict:
     """
     Simulated final event metrics for the After Action Report.
