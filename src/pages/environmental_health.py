@@ -192,15 +192,17 @@ def render_environmental_health() -> None:
     ))
 
     # Pulse dot — live temp
-    live_temp_now = ts.dropna(subset=["live_temp"]).iloc[-1]
-    fig.add_trace(go.Scatter(
-        x=[live_temp_now["minute"]], y=[live_temp_now["live_temp"]],
-        mode="markers",
-        marker={"size": 11, "color": "#ff5b65", "line": {"color": "#101722", "width": 2}},
-        yaxis="y1",
-        showlegend=False,
-        hoverinfo="skip",
-    ))
+    _live_temp_rows = ts.dropna(subset=["live_temp"])
+    if not _live_temp_rows.empty:
+        live_temp_now = _live_temp_rows.iloc[-1]
+        fig.add_trace(go.Scatter(
+            x=[live_temp_now["minute"]], y=[live_temp_now["live_temp"]],
+            mode="markers",
+            marker={"size": 11, "color": "#ff5b65", "line": {"color": "#101722", "width": 2}},
+            yaxis="y1",
+            showlegend=False,
+            hoverinfo="skip",
+        ))
 
     # Faint full forecast for AQI
     fig.add_trace(go.Scatter(
@@ -226,16 +228,20 @@ def render_environmental_health() -> None:
     ))
 
     # Pulse dot — live AQI
-    live_aqi_now = ts.dropna(subset=["live_aqi"]).iloc[-1]
-    fig.add_trace(go.Scatter(
-        x=[live_aqi_now["minute"]], y=[live_aqi_now["live_aqi"]],
-        mode="markers",
-        marker={"size": 11, "color": "#e8b84d", "line": {"color": "#101722", "width": 2}},
-        yaxis="y2",
-        showlegend=False,
-        hoverinfo="skip",
-    ))
+    _live_aqi_rows = ts.dropna(subset=["live_aqi"])
+    if not _live_aqi_rows.empty:
+        live_aqi_now = _live_aqi_rows.iloc[-1]
+        fig.add_trace(go.Scatter(
+            x=[live_aqi_now["minute"]], y=[live_aqi_now["live_aqi"]],
+            mode="markers",
+            marker={"size": 11, "color": "#e8b84d", "line": {"color": "#101722", "width": 2}},
+            yaxis="y2",
+            showlegend=False,
+            hoverinfo="skip",
+        ))
 
+    # Apply base theme first, then layer dual-axis config on top
+    plotly_layout(fig, 300)
     fig.update_layout(
         yaxis=dict(
             title="Temperature (°F)",
@@ -243,6 +249,7 @@ def render_environmental_health() -> None:
             tickfont={"color": "#ff5b65"},
             tickformat=".0f",
             range=[60, 100],
+            gridcolor="#2b3645",
         ),
         yaxis2=dict(
             title="AQI",
@@ -251,11 +258,13 @@ def render_environmental_health() -> None:
             overlaying="y",
             side="right",
             range=[0, 150],
+            showgrid=False,
         ),
         xaxis=dict(
             tickvals=ts["minute"].tolist(),
             ticktext=ts["label"].tolist(),
             title="",
+            gridcolor="#2b3645",
         ),
         legend=dict(
             orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
@@ -263,8 +272,7 @@ def render_environmental_health() -> None:
         ),
     )
 
-    st.plotly_chart(plotly_layout(fig, 300), use_container_width=True,
-                    config={"displayModeBar": False})
+    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
 
     st.caption(
         "Temperature and AQI readings from stadium weather station. "

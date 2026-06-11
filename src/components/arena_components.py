@@ -201,32 +201,16 @@ def action_card(
     priority_num: int | None = None,  # e.g. 1 → shows "PRIORITY 1" badge
     card_key: str | None = None, # unique key for ignore/complete state tracking
 ) -> None:
-    # ── Ignore / complete state ───────────────────────────────────────────────
-    completed = False
-    ignored   = False
+    # ── Ignore / complete state — just disappear when either is clicked ──────
     if card_key:
-        completed = st.session_state.get(f"card_{card_key}_done", False)
-        ignored   = st.session_state.get(f"card_{card_key}_ignored", False)
+        if st.session_state.get(f"card_{card_key}_done", False):
+            return
+        if st.session_state.get(f"card_{card_key}_ignored", False):
+            return
 
-    if ignored:
-        st.markdown(
-            f"<div style='background:{C['card_bg']};border:1px solid #2b3645;"
-            f"border-radius:14px;padding:12px 20px;margin-bottom:16px;"
-            f"opacity:0.45;display:flex;align-items:center;justify-content:space-between;'>"
-            f"<span style='font-size:12px;color:{C['subtext']};'>"
-            f"🚫 <em>{_html.escape(title)}</em> — ignored</span>"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
-        if card_key:
-            if st.button("Undo", key=f"undo_ignore_{card_key}"):
-                st.session_state[f"card_{card_key}_ignored"] = False
-                st.rerun()
-        return
-
-    border_color = "#12b981" if completed else {"red": "#ff5b65", "yellow": "#e8b84d", "green": "#12b981"}.get(priority, "#ff5b65")
-    badge_bg     = "#0d2b1a"  if completed else {"red": "#3d1a1a",  "yellow": "#2d2510",  "green": "#0d2b1a"}.get(priority, "#3d1a1a")
-    icon         = "✅" if completed else {"red": "🔴", "yellow": "🟡", "green": "🟢"}.get(priority, "🔴")
+    border_color = {"red": "#ff5b65", "yellow": "#e8b84d", "green": "#12b981"}.get(priority, "#ff5b65")
+    badge_bg     = {"red": "#3d1a1a",  "yellow": "#2d2510",  "green": "#0d2b1a"}.get(priority, "#3d1a1a")
+    icon         = {"red": "🔴", "yellow": "🟡", "green": "🟢"}.get(priority, "🔴")
     actions_html = "".join(
         f"<li style='margin-bottom:5px;color:{C['text']}'>{_html.escape(a)}</li>"
         for a in actions
@@ -236,12 +220,6 @@ def action_card(
         f"text-transform:uppercase;background:{border_color};color:#0d1117;"
         f"border-radius:4px;padding:2px 7px;margin-left:8px;'>#{priority_num}</span>"
         if priority_num else ""
-    )
-    completed_badge = (
-        "<span style='font-size:10px;font-weight:700;letter-spacing:1px;"
-        "text-transform:uppercase;background:#12b981;color:#0d1117;"
-        "border-radius:4px;padding:2px 7px;margin-left:8px;'>Completed</span>"
-        if completed else ""
     )
     insight_html = "" if compact else (
         f"<div style='font-size:12px;color:{C['subtext']};margin-bottom:10px;font-style:italic;'>"
@@ -259,7 +237,7 @@ def action_card(
           <div style='font-size:11px;font-weight:700;letter-spacing:1px;
                       text-transform:uppercase;color:{C["subtext"]};margin-bottom:6px;
                       display:flex;align-items:center;'>
-            {icon} &nbsp;{_html.escape(title)}{priority_badge}{completed_badge}
+            {icon} &nbsp;{_html.escape(title)}{priority_badge}
           </div>
           <div style='font-size:30px;font-weight:800;color:{C["accent1"]};
                       line-height:1.1;margin-bottom:8px;'>{_html.escape(kpi_value)}</div>
@@ -277,7 +255,7 @@ def action_card(
     )
 
     # ── Action buttons ────────────────────────────────────────────────────────
-    if card_key and not completed:
+    if card_key:
         btn_col1, btn_col2, _ = st.columns([1, 1, 3])
         with btn_col1:
             if st.button("✓ Complete", key=f"btn_done_{card_key}", use_container_width=True):
@@ -286,12 +264,6 @@ def action_card(
         with btn_col2:
             if st.button("Ignore", key=f"btn_ignore_{card_key}", use_container_width=True):
                 st.session_state[f"card_{card_key}_ignored"] = True
-                st.rerun()
-    elif card_key and completed:
-        undo_col, _ = st.columns([1, 4])
-        with undo_col:
-            if st.button("Undo", key=f"undo_done_{card_key}"):
-                st.session_state[f"card_{card_key}_done"] = False
                 st.rerun()
 
     st.markdown("<div style='margin-bottom:8px'></div>", unsafe_allow_html=True)
