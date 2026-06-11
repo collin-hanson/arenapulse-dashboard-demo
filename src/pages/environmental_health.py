@@ -244,16 +244,14 @@ def render_environmental_health() -> None:
     plotly_layout(fig, 300)
     fig.update_layout(
         yaxis=dict(
-            title="Temperature (°F)",
-            titlefont={"color": "#ff5b65"},
+            title=dict(text="Temperature (°F)", font=dict(color="#ff5b65")),
             tickfont={"color": "#ff5b65"},
             tickformat=".0f",
             range=[60, 100],
             gridcolor="#2b3645",
         ),
         yaxis2=dict(
-            title="AQI",
-            titlefont={"color": "#e8b84d"},
+            title=dict(text="AQI", font=dict(color="#e8b84d")),
             tickfont={"color": "#e8b84d"},
             overlaying="y",
             side="right",
