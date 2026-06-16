@@ -119,24 +119,23 @@ def render_after_action_report() -> None:
 
     score_color = "#12b981" if targets_hit >= 3 else "#e8b84d" if targets_hit == 2 else "#ff5b65"
 
-    score_col, dl_col = st.columns([4, 1])
-    with score_col:
-        st.markdown(
-            f'<div style="background:#151c25;border:1px solid {score_color};border-radius:12px;'
-            f'padding:18px 24px;margin-bottom:20px;display:flex;align-items:center;gap:20px;">'
-            f'<div style="font-size:42px;font-weight:800;color:{score_color};">{targets_hit}/4</div>'
-            f'<div>'
-            f'<div style="font-size:15px;font-weight:700;color:#f4f7fb;">Sustainability targets met</div>'
-            f'<div style="font-size:12px;color:#9aa8ba;margin-top:3px;">'
-            f'Waste · Energy · Water · Environmental Health</div>'
-            f'</div>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
+    report_text = _build_report_text(d, waste_met, energy_met, water_met, env_met, targets_hit)
+    safe_name = d["event_name"].replace(" ", "_").replace("—", "-").replace("/", "-")
+
+    st.markdown(
+        f'<div style="background:#151c25;border:1px solid {score_color};border-radius:12px;'
+        f'padding:18px 24px;margin-bottom:4px;display:flex;align-items:center;gap:20px;">'
+        f'<div style="font-size:42px;font-weight:800;color:{score_color};">{targets_hit}/4</div>'
+        f'<div style="flex:1;">'
+        f'<div style="font-size:15px;font-weight:700;color:#f4f7fb;">Sustainability targets met</div>'
+        f'<div style="font-size:12px;color:#9aa8ba;margin-top:3px;">'
+        f'Waste · Energy · Water · Environmental Health</div>'
+        f'</div>'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+    _, dl_col = st.columns([4, 1])
     with dl_col:
-        st.markdown("<div style='height:12px'></div>", unsafe_allow_html=True)
-        report_text = _build_report_text(d, waste_met, energy_met, water_met, env_met, targets_hit)
-        safe_name = d["event_name"].replace(" ", "_").replace("—", "-").replace("/", "-")
         st.download_button(
             label="⬇ Download report",
             data=report_text,
