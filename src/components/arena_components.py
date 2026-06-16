@@ -211,6 +211,7 @@ def action_card(
     border_color = {"red": "#ff5b65", "yellow": "#e8b84d", "green": "#12b981"}.get(priority, "#ff5b65")
     badge_bg     = {"red": "#3d1a1a",  "yellow": "#2d2510",  "green": "#0d2b1a"}.get(priority, "#3d1a1a")
     icon         = {"red": "🔴", "yellow": "🟡", "green": "🟢"}.get(priority, "🔴")
+
     actions_html = "".join(
         f"<li style='margin-bottom:5px;color:{C['text']}'>{_html.escape(a)}</li>"
         for a in actions
@@ -227,34 +228,31 @@ def action_card(
     )
     impact_html = "" if compact else (
         f"<div style='background:{C['plot_bg']};border-radius:8px;padding:8px 12px;"
-        f"font-size:12px;color:{C['accent2']};'>"
+        f"font-size:12px;color:{C['accent2']};margin-bottom:4px;'>"
         f"📈 Impact: {_html.escape(impact)}</div>"
     )
+
     st.markdown(
-        f"""
-        <div style='background:{C["card_bg"]};border:1px solid {border_color};
-                    border-radius:14px;padding:20px 22px;margin-bottom:8px;'>
-          <div style='font-size:11px;font-weight:700;letter-spacing:1px;
-                      text-transform:uppercase;color:{C["subtext"]};margin-bottom:6px;
-                      display:flex;align-items:center;'>
-            {icon} &nbsp;{_html.escape(title)}{priority_badge}
-          </div>
-          <div style='font-size:30px;font-weight:800;color:{C["accent1"]};
-                      line-height:1.1;margin-bottom:8px;'>{_html.escape(kpi_value)}</div>
-          <div style='background:{badge_bg};border-radius:8px;padding:8px 12px;margin-bottom:12px;'>
-            <div style='font-size:13px;font-weight:600;color:{border_color};'>
-              ❗ {_html.escape(gap_text)}
-            </div>
-          </div>
-          {insight_html}
-          <ul style='font-size:12px;padding-left:18px;margin:0 0 12px 0;'>{actions_html}</ul>
-          {impact_html}
-        </div>
-        """,
+        f"<div style='background:{C['card_bg']};border:1px solid {border_color};"
+        f"border-radius:14px;padding:20px 22px;margin-bottom:8px;'>"
+        f"<div style='font-size:11px;font-weight:700;letter-spacing:1px;"
+        f"text-transform:uppercase;color:{C['subtext']};margin-bottom:6px;"
+        f"display:flex;align-items:center;'>"
+        f"{icon} &nbsp;{_html.escape(title)}{priority_badge}"
+        f"</div>"
+        f"<div style='font-size:30px;font-weight:800;color:{C['accent1']};"
+        f"line-height:1.1;margin-bottom:8px;'>{_html.escape(kpi_value)}</div>"
+        f"<div style='background:{badge_bg};border-radius:8px;border-left:3px solid {border_color};"
+        f"padding:8px 12px;margin-bottom:12px;'>"
+        f"<div style='font-size:13px;font-weight:600;color:{border_color};'>"
+        f"❗ {_html.escape(gap_text)}</div></div>"
+        f"{insight_html}"
+        f"<ul style='font-size:12px;padding-left:18px;margin:0 0 10px 0;'>{actions_html}</ul>"
+        f"{impact_html}"
+        f"</div>",
         unsafe_allow_html=True,
     )
 
-    # ── Action buttons ────────────────────────────────────────────────────────
     if card_key:
         btn_col1, btn_col2, _ = st.columns([1, 1, 3])
         with btn_col1:
@@ -336,24 +334,21 @@ def ai_chat(get_response_fn, placeholder: str, input_key: str) -> None:
 
     history = st.session_state[history_key]
 
-    st.markdown("<br>", unsafe_allow_html=True)
-    with st.container(border=True):
+    # ── Section divider + header ──────────────────────────────────────────────
+    hdr_col, clr_col = st.columns([5, 1])
+    with hdr_col:
+        st.markdown(
+            '<div class="ap-ai-divider">🤖 &nbsp;Ask the AI</div>',
+            unsafe_allow_html=True,
+        )
+    with clr_col:
+        st.markdown("<div style='height:18px'></div>", unsafe_allow_html=True)
+        if history:
+            if st.button("Clear", key=f"{input_key}_clear", use_container_width=True):
+                st.session_state[history_key] = []
+                st.rerun()
 
-        # ── Header + clear button ─────────────────────────────────────────────
-        h_col, c_col = st.columns([5, 1])
-        with h_col:
-            st.markdown(
-                '<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">'
-                '<span style="font-size:18px;">🤖</span>'
-                '<span style="font-size:14px;font-weight:700;color:#f4f7fb;">AI Assistant</span>'
-                '</div>',
-                unsafe_allow_html=True,
-            )
-        with c_col:
-            if history:
-                if st.button("Clear", key=f"{input_key}_clear", use_container_width=True):
-                    st.session_state[history_key] = []
-                    st.rerun()
+    with st.container(border=True):
 
         # ── Conversation history (fixed height, scrollable) ───────────────────
         msgs_html = ""

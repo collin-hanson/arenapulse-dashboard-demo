@@ -189,7 +189,11 @@ def render_energy_carbon() -> None:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── System detail — load bars ─────────────────────────────────────────────
-    st.subheader("System detail")
+    st.markdown(
+        '<div class="ap-section-header">⚡ System detail</div>'
+        '<div class="ap-section-sub">Live load by system — tracked from building management</div>',
+        unsafe_allow_html=True,
+    )
     bar_color_map = {"Monitor": "#e8b84d", "Stable": "#12b981", "High": "#ff5b65"}
     for row in energy.itertuples(index=False):
         pill_cls  = str(row.status).lower()

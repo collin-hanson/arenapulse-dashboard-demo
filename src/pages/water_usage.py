@@ -124,8 +124,11 @@ def render_water_usage() -> None:
     st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Usage by system ───────────────────────────────────────────────────────
-    st.subheader("Usage by system")
-    st.caption("Estimated split from venue submeters — restrooms dominate on event nights")
+    st.markdown(
+        '<div class="ap-section-header">💧 Usage by system</div>'
+        '<div class="ap-section-sub">Estimated split from venue submeters — restrooms dominate on event nights</div>',
+        unsafe_allow_html=True,
+    )
 
     status_colors = {"Monitor": "#e8b84d", "Stable": "#12b981", "High": "#ff5b65"}
     systems = get_water_by_system(total_litres)

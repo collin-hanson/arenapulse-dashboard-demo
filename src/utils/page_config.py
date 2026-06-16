@@ -50,35 +50,38 @@ def configure_page() -> None:
         .ap-phase-banner {
             display: flex;
             align-items: center;
-            gap: 1rem;
-            background: linear-gradient(90deg, rgba(22,217,232,.10) 0%, rgba(139,92,246,.06) 100%);
-            border: 1px solid var(--ap-line);
+            gap: 1.2rem;
+            background: linear-gradient(90deg, rgba(22,217,232,.12) 0%, rgba(139,92,246,.07) 100%);
+            border: 1px solid rgba(22,217,232,.20);
             border-left: 4px solid var(--ap-cyan);
-            border-radius: 8px;
-            padding: .7rem 1.1rem;
-            margin-bottom: 1rem;
+            border-radius: 10px;
+            padding: 1rem 1.4rem;
+            margin-bottom: 1.2rem;
         }
         .ap-phase-banner .phase-tag {
             color: var(--ap-cyan);
-            font-size: .7rem;
+            font-size: .72rem;
             font-weight: 850;
             letter-spacing: .10em;
             text-transform: uppercase;
-            background: rgba(22,217,232,.12);
-            border: 1px solid rgba(22,217,232,.25);
-            border-radius: 4px;
-            padding: .18rem .55rem;
+            background: rgba(22,217,232,.14);
+            border: 1px solid rgba(22,217,232,.30);
+            border-radius: 6px;
+            padding: .28rem .7rem;
             white-space: nowrap;
         }
         .ap-phase-banner .phase-countdown {
             font-weight: 800;
-            font-size: .95rem;
+            font-size: 1.05rem;
             color: var(--ap-text);
         }
-        .ap-phase-banner .phase-countdown strong { color: var(--ap-yellow); }
+        .ap-phase-banner .phase-countdown strong {
+            color: var(--ap-yellow);
+            font-size: 1.15rem;
+        }
         .ap-phase-banner .phase-meta {
             color: var(--ap-muted);
-            font-size: .84rem;
+            font-size: .86rem;
             margin-left: auto;
         }
 
@@ -86,24 +89,25 @@ def configure_page() -> None:
         .ap-kpi {
             background: var(--ap-surface);
             border: 1px solid var(--ap-line);
-            border-radius: 8px;
-            padding: 1rem 1.1rem;
+            border-top: 3px solid var(--ap-cyan);
+            border-radius: 10px;
+            padding: 1.1rem 1.2rem;
             height: 100%;
         }
         .kpi-label {
             color: var(--ap-muted);
             font-size: .68rem;
             font-weight: 850;
-            letter-spacing: .08em;
+            letter-spacing: .09em;
             text-transform: uppercase;
-            margin-bottom: .35rem;
+            margin-bottom: .4rem;
         }
         .kpi-value {
             color: var(--ap-text);
-            font-size: 2.15rem;
+            font-size: 2.2rem;
             font-weight: 850;
             line-height: 1;
-            margin-bottom: .28rem;
+            margin-bottom: .3rem;
         }
         .kpi-delta { font-size: .78rem; font-weight: 700; }
         .kpi-delta.neg { color: var(--ap-red); }
@@ -381,16 +385,33 @@ def configure_page() -> None:
         .priority-insight { color: var(--ap-text); margin-bottom: .35rem; }
         .priority-action  { color: var(--ap-muted); font-size: .8rem; }
 
-        /* ── Section header (his layout) ── */
+        /* ── Section header ── */
         .ap-section-header {
-            font-size: 14px;
-            font-weight: 700;
+            font-size: 12px;
+            font-weight: 850;
             color: var(--ap-text);
             margin-bottom: 4px;
+            margin-top: 4px;
             text-transform: uppercase;
-            letter-spacing: .06em;
+            letter-spacing: .08em;
         }
         .ap-section-sub { font-size: 12px; color: var(--ap-muted); margin-bottom: 12px; }
+
+        /* ── AI section divider ── */
+        .ap-ai-divider {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            font-weight: 850;
+            color: var(--ap-cyan);
+            text-transform: uppercase;
+            letter-spacing: .08em;
+            border-top: 1px solid var(--ap-line);
+            padding-top: 1.1rem;
+            margin-top: .4rem;
+            margin-bottom: .6rem;
+        }
 
         /* ── Tabs ── */
         .stTabs [data-baseweb="tab-list"] {

@@ -12,7 +12,10 @@ def render_governance_view() -> None:
 
     statuses = get_demo_data_quality_statuses()
     status_rows = [{"feed": s.feed_name, "status": s.status, "message": s.message} for s in statuses]
-    st.subheader("Data feed status")
+    st.markdown(
+        '<div class="ap-section-header">📡 Data feed status</div>',
+        unsafe_allow_html=True,
+    )
     render_status_list(status_rows, "feed", "message", "status")
 
     payload = get_demo_payload()
@@ -40,13 +43,13 @@ def render_governance_view() -> None:
 
     left, right = st.columns(2)
     with left:
-        st.subheader("Accepted operational fields")
+        st.markdown('<div class="ap-section-header">✅ Accepted operational fields</div>', unsafe_allow_html=True)
         accepted_rows = [
             {"field": key, "value": value, "status": "Active"} for key, value in sanitized.accepted.items()
         ]
         render_status_list(accepted_rows, "field", "value", "status")
     with right:
-        st.subheader("Rejected before storage")
+        st.markdown('<div class="ap-section-header">🚫 Rejected before storage</div>', unsafe_allow_html=True)
         dropped_rows = [
             {"field": key, "value": "Removed from payload", "status": "Blocked"}
             for key in sanitized.dropped_fields
