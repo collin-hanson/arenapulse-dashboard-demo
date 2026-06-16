@@ -227,9 +227,9 @@ def action_card(
         f"💡 {_html.escape(insight)}</div>"
     )
     impact_html = "" if compact else (
-        f"<div style='background:{C['plot_bg']};border-radius:8px;padding:8px 12px;"
-        f"font-size:12px;color:{C['accent2']};margin-bottom:4px;'>"
-        f"📈 Impact: {_html.escape(impact)}</div>"
+        f"<div style='background:{C['plot_bg']};border-radius:8px;padding:10px 14px;"
+        f"font-size:13px;color:#4eeecb;margin-bottom:4px;line-height:1.5;'>"
+        f"<span style='font-weight:700;'>📈 Impact:</span> {_html.escape(impact)}</div>"
     )
 
     st.markdown(
@@ -371,9 +371,22 @@ def ai_chat(get_response_fn, placeholder: str, input_key: str) -> None:
                     f'<div style="font-size:13px;color:#f4f7fb;line-height:1.6;">{formatted}</div>'
                     f'</div>'
                 )
+        if msgs_html:
+            history_content = msgs_html
+        else:
+            history_content = (
+                '<div style="height:100%;display:flex;flex-direction:column;'
+                'align-items:center;justify-content:center;gap:8px;">'
+                '<span style="font-size:22px;">🤖</span>'
+                '<span style="font-size:13px;font-weight:600;color:#f4f7fb;">Ask me anything about this page</span>'
+                '<span style="font-size:12px;color:#9aa8ba;text-align:center;max-width:280px;">'
+                'Waste, energy, water, environmental health — or just ask what to do right now.'
+                '</span>'
+                '</div>'
+            )
         st.markdown(
             f'<div style="height:280px;overflow-y:auto;padding-right:4px;margin-bottom:8px;">'
-            f'{msgs_html}'
+            f'{history_content}'
             f'</div>',
             unsafe_allow_html=True,
         )
