@@ -233,7 +233,7 @@ def render_executive_scorecard() -> None:
         action_card(
             title=a["title"], kpi_value=a["kpi"], gap_text=a["gap"],
             insight=a["insight"], actions=a["actions"], impact=a["impact"],
-            priority=a["priority"], compact=True, priority_num=1,
+            priority=a["priority"], compact=False, priority_num=1,
             card_key=a.get("key"),
         )
         # Remaining actions — up to 3 per row
