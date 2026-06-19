@@ -165,6 +165,51 @@ CREATE TABLE IF NOT EXISTS env_timeseries (
     temp_f      REAL NOT NULL,
     aqi         REAL NOT NULL
 );
+
+-- Waste diversion trend (historical, per event date)
+CREATE TABLE IF NOT EXISTS waste_trend (
+    id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+    sport                   TEXT NOT NULL,
+    event_date              TEXT NOT NULL,
+    verified_diversion_rate REAL NOT NULL,
+    target_diversion_rate   REAL NOT NULL
+);
+
+-- Section hotspots — waste volume and risk by zone
+CREATE TABLE IF NOT EXISTS section_hotspots (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id    INTEGER NOT NULL REFERENCES events(event_id),
+    section     TEXT NOT NULL,
+    waste_lbs   REAL NOT NULL,
+    risk        TEXT NOT NULL
+);
+
+-- Product packaging risk — procurement intelligence
+CREATE TABLE IF NOT EXISTS product_risk (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id        INTEGER NOT NULL REFERENCES events(event_id),
+    product         TEXT NOT NULL,
+    packaging_type  TEXT NOT NULL,
+    waste_stream    TEXT NOT NULL,
+    units_sold      INTEGER NOT NULL,
+    landfill_risk   TEXT NOT NULL,
+    note            TEXT NOT NULL
+);
+
+-- Governance data feed statuses
+CREATE TABLE IF NOT EXISTS governance_feeds (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    feed_name   TEXT NOT NULL,
+    status      TEXT NOT NULL,
+    message     TEXT NOT NULL
+);
+
+-- POS sample payload for governance demo (approved fields only)
+CREATE TABLE IF NOT EXISTS pos_sample (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    field   TEXT NOT NULL,
+    value   TEXT NOT NULL
+);
 """
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
@@ -200,6 +245,7 @@ def seed(conn: sqlite3.Connection) -> None:
 
     # ── Drop all tables and recreate ──────────────────────────────────────────
     tables = [
+        "pos_sample", "governance_feeds", "product_risk", "section_hotspots", "waste_trend",
         "env_timeseries", "env_risk", "env_conditions",
         "water_timeseries", "water_systems",
         "section_sales", "zone_status", "waste_streams",
@@ -626,6 +672,112 @@ def seed(conn: sqlite3.Connection) -> None:
             "INSERT INTO water_timeseries (event_id, minute, cumulative_litres) VALUES (?,?,?)",
             [(eid, int(m), float(v)) for m, v in zip(NFL_MINUTES, wcurve)]
         )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # WASTE TREND — historical diversion rate per event date
+    # ══════════════════════════════════════════════════════════════════════════
+    rng_wt = np.random.default_rng(seed=55)
+    soccer_trend_dates = pd.date_range(end="2026-05-20", periods=12, freq="9D")
+    soccer_div_trend   = np.clip(np.linspace(0.38, 0.48, 12) + rng_wt.normal(0, 0.02, 12), 0.28, 0.60)
+    cur.executemany(
+        "INSERT INTO waste_trend (sport, event_date, verified_diversion_rate, target_diversion_rate) VALUES (?,?,?,?)",
+        [("soccer", soccer_trend_dates[i].strftime("%Y-%m-%d"),
+          round(float(soccer_div_trend[i]), 3), 0.50) for i in range(12)]
+    )
+
+    nfl_trend_dates = pd.date_range(end="2026-05-01", periods=8, freq="14D")
+    nfl_div_trend   = np.clip(np.linspace(0.14, 0.22, 8) + rng_wt.normal(0, 0.015, 8), 0.10, 0.32)
+    cur.executemany(
+        "INSERT INTO waste_trend (sport, event_date, verified_diversion_rate, target_diversion_rate) VALUES (?,?,?,?)",
+        [("nfl", nfl_trend_dates[i].strftime("%Y-%m-%d"),
+          round(float(nfl_div_trend[i]), 3), 0.30) for i in range(8)]
+    )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # SECTION HOTSPOTS — waste volume and risk by zone (soccer + NFL live)
+    # ══════════════════════════════════════════════════════════════════════════
+    cur.executemany(
+        "INSERT INTO section_hotspots (event_id, section, waste_lbs, risk) VALUES (?,?,?,?)",
+        [
+            (soccer_live_id, "Lower Concourse East",  920, "High"),
+            (soccer_live_id, "Gate Plaza",             510, "High"),
+            (soccer_live_id, "Upper Concourse West",   340, "Medium"),
+            (soccer_live_id, "Premium Level",          180, "Low"),
+            (nfl_live_id,    "Lower Concourse East",  1240, "High"),
+            (nfl_live_id,    "Gate Plaza",              880, "High"),
+            (nfl_live_id,    "Upper Concourse West",    620, "Medium"),
+            (nfl_live_id,    "Premium Level",           310, "Low"),
+        ]
+    )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # PRODUCT RISK — packaging risk by product (soccer + NFL live)
+    # ══════════════════════════════════════════════════════════════════════════
+    cur.executemany(
+        "INSERT INTO product_risk (event_id, product, packaging_type, waste_stream, units_sold, landfill_risk, note) VALUES (?,?,?,?,?,?,?)",
+        [
+            # Soccer
+            (soccer_live_id, "Hot Dog",        "Foil wrap",      "Landfill",    3840, "High",   "Foil-lined wrap is not recyclable or compostable — unavoidable landfill"),
+            (soccer_live_id, "Nachos",         "Plastic tray",   "Landfill",    2210, "High",   "Non-recyclable plastic tray. Switch to compostable paperboard to recover"),
+            (soccer_live_id, "Beer Can",       "Aluminium can",  "Recyclable",  6720, "Low",    "100% recyclable — ensure adequate recycling bin coverage at high-volume zones"),
+            (soccer_live_id, "Water Bottle",   "PET plastic",    "Recyclable",  4100, "Medium", "Recyclable if captured — often ends up in landfill due to bin proximity issues"),
+            (soccer_live_id, "Soda",           "PET plastic",    "Recyclable",  2880, "Medium", "Recyclable if captured — co-locate with beer can bins to improve capture rate"),
+            (soccer_live_id, "Wine Cup",       "PLA plastic",    "Compostable", 1420, "Medium", "Compostable only in industrial facility — check hauler capability before claiming"),
+            (soccer_live_id, "Pretzel",        "Paper bag",      "Compostable", 1980, "Low",    "Compostable paper — ensure compost bins placed at pretzel vendor stands"),
+            (soccer_live_id, "Popcorn",        "Paper box",      "Compostable", 2640, "Low",    "Compostable paper — high volume, strong diversion opportunity"),
+            # NFL
+            (nfl_live_id,    "Hot Wings",      "Foil tray",      "Landfill",    4200, "High",   "Foil-lined tray is not recoverable — switching to compostable tray saves ~600 lb/event"),
+            (nfl_live_id,    "Nachos",         "Plastic tray",   "Landfill",    3100, "High",   "Non-recyclable plastic. Compostable paperboard alternative available from 3 suppliers"),
+            (nfl_live_id,    "Beer Can",       "Aluminium can",  "Recyclable",  9800, "Low",    "100% recyclable — highest volume item, recycling bin density is critical"),
+            (nfl_live_id,    "Soda",           "PET plastic",    "Recyclable",  4400, "Medium", "Recyclable if captured — often landfilled at NFL events due to bin proximity"),
+            (nfl_live_id,    "Burger",         "Paper wrap",     "Compostable", 2900, "Low",    "Compostable paper wrap — ensure compost bins at burger vendor locations"),
+            (nfl_live_id,    "Pretzel",        "Paper bag",      "Compostable", 2100, "Low",    "Compostable paper — consistent capture when bins are co-located with vendor"),
+            (nfl_live_id,    "Whiskey Cup",    "PLA plastic",    "Compostable", 1600, "Medium", "PLA only compostable in industrial facility — verify hauler accepts PLA"),
+            (nfl_live_id,    "Popcorn",        "Paper box",      "Compostable", 3200, "Low",    "Compostable paper — very high volume, strong diversion lever at this venue"),
+        ]
+    )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # GOVERNANCE FEEDS — data feed status
+    # ══════════════════════════════════════════════════════════════════════════
+    cur.executemany(
+        "INSERT INTO governance_feeds (feed_name, status, message) VALUES (?,?,?)",
+        [
+            ("POS Transactions",    "Active",  "Receiving sanitized payloads — 14 terminals active"),
+            ("Ticketing / Turnstile","Active", "Zone density updating every 90 seconds"),
+            ("Waste Hauler API",    "Delayed", "Post-event verification pending — data arrives within 24 hrs"),
+            ("Building Management", "Active",  "HVAC and lighting load streaming in real-time"),
+            ("Weather Station",     "Active",  "Outdoor temp, AQI, humidity updating every 5 min"),
+        ]
+    )
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # POS SAMPLE — demo payload for governance page (approved fields only)
+    # ══════════════════════════════════════════════════════════════════════════
+    cur.executemany(
+        "INSERT INTO pos_sample (field, value) VALUES (?,?)",
+        [
+            ("venue_id",         "PILOT_STADIUM"),
+            ("event_id",         "2026-06-06-SOC"),
+            ("vendor_location",  "Lower Concourse East — Stand 4"),
+            ("section",          "Lower Concourse East"),
+            ("item_name",        "Hot Dog"),
+            ("item_category",    "Food"),
+            ("quantity",         "2"),
+            ("timestamp",        "2026-06-06T20:14:32Z"),
+            ("packaging_type",   "Foil wrap"),
+            ("waste_stream",     "Landfill"),
+            ("compostable_flag", "0"),
+            ("recyclable_flag",  "0"),
+            # Fields below are intentionally included to demo sanitization rejection
+            ("transaction_id",   "TXN-884921"),
+            ("amount",           "9.50"),
+            ("card_last4",       "4821"),
+            ("customer_id",      "CUST-002948"),
+            ("loyalty_points",   "120"),
+            ("staff_id",         "EMP-0341"),
+        ]
+    )
 
     conn.commit()
     print(f"[OK] Database seeded at {DB_PATH}")

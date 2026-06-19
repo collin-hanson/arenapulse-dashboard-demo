@@ -7,10 +7,6 @@ import pandas as pd
 import streamlit as st
 
 from src.services import db
-from src.services.data_loader import load_excel_workbook
-
-
-DEMO_WORKBOOK = "ArenaPulse_Demo_Data.xlsx"
 
 
 # ── Sport helpers ──────────────────────────────────────────────────────────────
@@ -96,10 +92,11 @@ def get_event_context() -> EventContext:
 # ── Waste ──────────────────────────────────────────────────────────────────────
 
 def load_waste_trend() -> pd.DataFrame:
-    trend = load_excel_workbook(DEMO_WORKBOOK)["Waste_Trend"].copy()
+    trend = db.get_waste_trend(_get_sport()).copy()
+    trend = trend.rename(columns={"event_date": "date"})
     trend["date"] = pd.to_datetime(trend["date"])
     trend["verified_diversion_rate"] = trend["verified_diversion_rate"] * 100
-    trend["target_diversion_rate"] = trend["target_diversion_rate"] * 100
+    trend["target_diversion_rate"]   = trend["target_diversion_rate"]   * 100
     return trend
 
 
@@ -109,11 +106,13 @@ def get_waste_streams() -> pd.DataFrame:
 
 
 def get_product_risk() -> pd.DataFrame:
-    return load_excel_workbook(DEMO_WORKBOOK)["Product_Risk"].copy()
+    e = _live_event()
+    return db.get_product_risk(e["event_id"])
 
 
 def get_section_hotspots() -> pd.DataFrame:
-    return load_excel_workbook(DEMO_WORKBOOK)["Section_Hotspots"].copy()
+    e = _live_event()
+    return db.get_section_hotspots(e["event_id"])
 
 
 def get_waste_diversion_history(current_max_possible: float, n: int = 10) -> pd.DataFrame:
@@ -224,7 +223,7 @@ def get_energy_snapshot() -> pd.DataFrame:
 
 
 def get_governance_feeds() -> pd.DataFrame:
-    return load_excel_workbook(DEMO_WORKBOOK)["Governance_Feeds"].copy()
+    return db.get_governance_feeds()
 
 
 def get_operational_summary() -> pd.DataFrame:
@@ -275,7 +274,7 @@ def get_water_context() -> pd.DataFrame:
 
 
 def get_pos_sample() -> pd.DataFrame:
-    return load_excel_workbook(DEMO_WORKBOOK)["POS_Sample"].copy()
+    return db.get_pos_sample()
 
 
 def get_zone_status() -> pd.DataFrame:

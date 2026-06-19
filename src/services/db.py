@@ -196,3 +196,38 @@ def get_env_timeseries(event_id: int) -> pd.DataFrame:
         "WHERE event_id = ? ORDER BY minute",
         (event_id,),
     )
+
+
+# ── Waste (additional) ─────────────────────────────────────────────────────────
+
+def get_waste_trend(sport: str) -> pd.DataFrame:
+    return query(
+        "SELECT event_date, verified_diversion_rate, target_diversion_rate "
+        "FROM waste_trend WHERE sport = ? ORDER BY event_date",
+        (sport,),
+    )
+
+
+def get_section_hotspots(event_id: int) -> pd.DataFrame:
+    return query(
+        "SELECT section, waste_lbs, risk FROM section_hotspots WHERE event_id = ?",
+        (event_id,),
+    )
+
+
+def get_product_risk(event_id: int) -> pd.DataFrame:
+    return query(
+        "SELECT product, packaging_type, waste_stream, units_sold, landfill_risk, note "
+        "FROM product_risk WHERE event_id = ? ORDER BY units_sold DESC",
+        (event_id,),
+    )
+
+
+# ── Governance ─────────────────────────────────────────────────────────────────
+
+def get_governance_feeds() -> pd.DataFrame:
+    return query("SELECT feed_name, status, message FROM governance_feeds")
+
+
+def get_pos_sample() -> pd.DataFrame:
+    return query("SELECT field, value FROM pos_sample")
