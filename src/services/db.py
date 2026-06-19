@@ -101,7 +101,7 @@ def get_energy_timeseries_avg(sport: str) -> pd.DataFrame:
 
 def get_waste_streams(event_id: int) -> pd.DataFrame:
     return query(
-        "SELECT stream, expected_lbs, max_recoverable_lbs, landfill_risk_lbs "
+        "SELECT stream, expected_lbs, current_captured_lbs, max_recoverable_lbs, landfill_risk_lbs "
         "FROM waste_streams WHERE event_id = ?",
         (event_id,),
     )

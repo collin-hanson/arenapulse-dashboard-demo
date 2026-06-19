@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS waste_streams (
     event_id            INTEGER NOT NULL REFERENCES events(event_id),
     stream              TEXT NOT NULL,
     expected_lbs        REAL NOT NULL,
+    current_captured_lbs REAL NOT NULL,
     max_recoverable_lbs REAL NOT NULL,
     landfill_risk_lbs   REAL NOT NULL
 );
@@ -253,13 +254,13 @@ def seed(conn: sqlite3.Connection) -> None:
         [(soccer_live_id, int(m), float(v)) for m, v in zip(SOCCER_MINUTES, kwh_curve)]
     )
 
-    # Waste streams
+    # Waste streams — current_captured_lbs reflects diversion at current_diversion_rate (28%)
     cur.executemany(
-        "INSERT INTO waste_streams (event_id, stream, expected_lbs, max_recoverable_lbs, landfill_risk_lbs) VALUES (?,?,?,?,?)",
+        "INSERT INTO waste_streams (event_id, stream, expected_lbs, current_captured_lbs, max_recoverable_lbs, landfill_risk_lbs) VALUES (?,?,?,?,?,?)",
         [
-            (soccer_live_id, "Compostable",  2100, 1890, 210),
-            (soccer_live_id, "Recyclable",   2800, 2520, 280),
-            (soccer_live_id, "Landfill",     1990,    0, 1990),
+            (soccer_live_id, "Compostable",  2100,  420, 1890, 210),
+            (soccer_live_id, "Recyclable",   2800,  980, 2520, 280),
+            (soccer_live_id, "Landfill",     1990,    0,    0, 1990),
         ]
     )
 
@@ -459,13 +460,13 @@ def seed(conn: sqlite3.Connection) -> None:
         [(nfl_live_id, int(m), float(v)) for m, v in zip(NFL_MINUTES, kwh_curve_nfl)]
     )
 
-    # Waste streams — NFL
+    # Waste streams — NFL (current_captured_lbs reflects 21% diversion rate)
     cur.executemany(
-        "INSERT INTO waste_streams (event_id, stream, expected_lbs, max_recoverable_lbs, landfill_risk_lbs) VALUES (?,?,?,?,?)",
+        "INSERT INTO waste_streams (event_id, stream, expected_lbs, current_captured_lbs, max_recoverable_lbs, landfill_risk_lbs) VALUES (?,?,?,?,?,?)",
         [
-            (nfl_live_id, "Compostable",  2200,  616, 1584),
-            (nfl_live_id, "Recyclable",   3800, 2660,  760),
-            (nfl_live_id, "Landfill",     2240,    0, 2240),
+            (nfl_live_id, "Compostable",  2200,  264,  616, 1584),
+            (nfl_live_id, "Recyclable",   3800, 1134, 2660,  760),
+            (nfl_live_id, "Landfill",     2240,    0,    0, 2240),
         ]
     )
 
