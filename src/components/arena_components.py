@@ -254,15 +254,13 @@ def action_card(
     )
 
     if card_key:
-        done_label   = "✓ Done" if compact else "✓ Complete"
-        ignore_label = "✕"      if compact else "Ignore"
-        btn_col1, btn_col2, _ = st.columns([1, 1, 2] if compact else [1, 1, 3])
+        btn_col1, btn_col2, _ = st.columns([1, 1, 2])
         with btn_col1:
-            if st.button(done_label, key=f"btn_done_{card_key}", use_container_width=True):
+            if st.button("✓ Done", key=f"btn_done_{card_key}", use_container_width=True):
                 st.session_state[f"card_{card_key}_done"] = True
                 st.rerun()
         with btn_col2:
-            if st.button(ignore_label, key=f"btn_ignore_{card_key}", use_container_width=True):
+            if st.button("✕ Ignore", key=f"btn_ignore_{card_key}", use_container_width=True):
                 st.session_state[f"card_{card_key}_ignored"] = True
                 st.rerun()
 
