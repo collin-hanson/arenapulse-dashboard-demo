@@ -184,7 +184,7 @@ def get_env_conditions(event_id: int) -> pd.DataFrame:
 def get_env_risk(event_id: int) -> pd.DataFrame:
     """Risk factor cards — maps to Environmental_Risk sheet."""
     return query(
-        "SELECT factor, status, headline, watch, notify_if "
+        "SELECT factor, status, headline, detail, watch_for, notify_if "
         "FROM env_risk WHERE event_id = ?",
         (event_id,),
     )

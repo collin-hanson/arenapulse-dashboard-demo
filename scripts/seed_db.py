@@ -152,7 +152,8 @@ CREATE TABLE IF NOT EXISTS env_risk (
     factor      TEXT NOT NULL,
     status      TEXT NOT NULL,
     headline    TEXT NOT NULL,
-    watch       TEXT NOT NULL,
+    detail      TEXT NOT NULL,
+    watch_for   TEXT NOT NULL,
     notify_if   TEXT NOT NULL
 );
 
@@ -323,22 +324,26 @@ def seed(conn: sqlite3.Connection) -> None:
 
     # Environmental risk cards
     cur.executemany(
-        "INSERT INTO env_risk (event_id, factor, status, headline, watch, notify_if) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO env_risk (event_id, factor, status, headline, detail, watch_for, notify_if) VALUES (?,?,?,?,?,?,?)",
         [
-            (soccer_live_id, "Heat Stress",    "Monitor",
+            (soccer_live_id, "Heat Stress",   "Monitor",
              "78°F outdoors + 65% humidity + 84% crowd density",
+             "78°F outdoors + 65% humidity + 84% average density. Outdoor areas without shade are highest risk. Body heat compounds ambient temperature quickly at this occupancy level.",
              "Fans showing distress in Lower Concourse East. Medical staff response times. Water station queue lengths before halftime.",
              "Any section exceeds 92% density AND outdoor temp climbs above 85°F"),
-            (soccer_live_id, "Air Quality",    "Stable",
+            (soccer_live_id, "Air Quality",   "Stable",
              "AQI 52 outdoors — ventilation running at capacity",
+             "Indoor air quality is acceptable. Moderate outdoor AQI poses no risk to general population. Ventilation is at full capacity. CO₂ buildup in enclosed concourses is possible but not yet flagged.",
              "AQI trend mid-event. Ventilation fault alerts. Any unusual odor reports from concourses.",
              "Outdoor AQI exceeds 100 OR any HVAC fault reported during event"),
-            (soccer_live_id, "Crowd Comfort",  "Monitor",
+            (soccer_live_id, "Crowd Comfort", "Monitor",
              "High density + elevated humidity creates discomfort conditions",
+             "84% occupancy with 65% humidity means body heat builds rapidly in enclosed sections. Halftime surge will push density higher and accelerate discomfort onset, especially in Upper Concourse.",
              "Complaint clusters in Upper Concourse West. Restroom queue lengths. Fan movement patterns ahead of halftime.",
              "Any enclosed section density exceeds 92% during halftime surge"),
-            (soccer_live_id, "Egress Safety",  "Stable",
+            (soccer_live_id, "Egress Safety", "Stable",
              "Normal flow at all exits — Gate Plaza at 92% requires monitoring",
+             "Gate Plaza is the highest-density exit zone. Current flow is managed but halftime will test capacity. All other exits are operating normally with no reported blockages.",
              "Gate Plaza density before and during halftime. Any exit obstruction reports. Emergency egress path clearance.",
              "Exit blockage reported OR Gate Plaza density exceeds 95%"),
         ]
@@ -528,22 +533,26 @@ def seed(conn: sqlite3.Connection) -> None:
 
     # Environmental risk — NFL
     cur.executemany(
-        "INSERT INTO env_risk (event_id, factor, status, headline, watch, notify_if) VALUES (?,?,?,?,?,?)",
+        "INSERT INTO env_risk (event_id, factor, status, headline, detail, watch_for, notify_if) VALUES (?,?,?,?,?,?,?)",
         [
             (nfl_live_id, "Heat Stress",   "High",
              "79°F outdoors + 62% humidity + 94% crowd density",
+             "Extreme conditions: 94% density with 62% humidity means body heat cannot dissipate. Outdoor sections and standing areas are highest risk. Medical response must be pre-positioned now.",
              "Fans showing distress in any outdoor section. Medical response times. Water station queues.",
              "Any section exceeds 95% density OR outdoor temp climbs above 85°F"),
             (nfl_live_id, "Air Quality",   "Monitor",
              "AQI 58 outdoors — generator exhaust risk in parking areas",
+             "AQI is moderate but tailgate generator proximity in parking zones creates localised exhaust risk. Indoor air is acceptable. Monitor for any spike as wind shifts.",
              "AQI trend through Q3/Q4. Any tailgate generator proximity reports.",
              "Outdoor AQI exceeds 100 OR any indoor AQI reading above 75"),
             (nfl_live_id, "Crowd Comfort", "High",
              "Extreme density + humidity creates significant discomfort risk",
+             "94% density combined with 62% humidity creates rapid body heat buildup in enclosed concourses. Q2/Q3 transition will drive a surge of fans into enclosed spaces simultaneously.",
              "Complaint clusters. Restroom queues. Fan movement at end of Q2.",
              "Any enclosed section density exceeds 95% during Q2/Q3 transition"),
             (nfl_live_id, "Egress Safety", "Monitor",
              "Gate Plaza at 91% — halftime egress will be stressed",
+             "Gate Plaza is the primary exit and entry point. At 91% density, halftime flow will test throughput. All other exits normal. Emergency egress paths confirmed clear.",
              "Gate Plaza throughput at halftime. Any bottleneck reports. Emergency path clearance.",
              "Exit blockage reported OR Gate Plaza density exceeds 96%"),
         ]
