@@ -438,7 +438,7 @@ def configure_page() -> None:
         }
 
         /* ── Responsive — tablet / small monitor ── */
-        @media (max-width: 900px) {
+        @media (max-width: 1200px) {
             /* Stack all Streamlit column blocks */
             [data-testid="stHorizontalBlock"] {
                 flex-direction: column !important;
@@ -488,7 +488,7 @@ def configure_page() -> None:
         }
 
         /* ── Responsive — mobile ── */
-        @media (max-width: 600px) {
+        @media (max-width: 768px) {
             .kpi-value { font-size: 1.2rem; }
             .ap-conditions { grid-template-columns: repeat(2, 1fr); }
             .ap-phase-banner { padding: .6rem .8rem; }
