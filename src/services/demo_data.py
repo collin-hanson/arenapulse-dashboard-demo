@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from src.services import db
 from src.services.data_loader import load_excel_workbook
 
 
@@ -15,12 +16,14 @@ DEMO_WORKBOOK = "ArenaPulse_Demo_Data.xlsx"
 # ── Sport helpers ──────────────────────────────────────────────────────────────
 
 def _get_sport() -> str:
-    """Return 'soccer' or 'nfl' from session state. Defaults to soccer."""
     return st.session_state.get("sport", "soccer")
 
 
+def _live_event() -> dict:
+    return db.get_live_event(_get_sport())
+
+
 def _make_time_labels(time_points, sport: str) -> list[str]:
-    """Return x-axis labels appropriate for the current sport."""
     labels = []
     for m in time_points:
         if sport == "nfl":
@@ -46,12 +49,11 @@ def _make_time_labels(time_points, sport: str) -> list[str]:
 
 
 def get_current_minute(ctx: "EventContext") -> int:
-    """Convert event phase + minutes_to_next_phase to a timeseries minute position."""
     phase_map = {
         "1ST HALF": 45,
         "2ND HALF": 90,
         "Q1": 15,
-        "Q2": 45,   # HT sits at minute 45 on our shared time axis
+        "Q2": 45,
         "Q3": 65,
         "Q4": 85,
     }
@@ -75,36 +77,23 @@ class EventContext:
 
 
 def get_event_context() -> EventContext:
-    if _get_sport() == "nfl":
-        return EventContext(
-            venue="Pilot Stadium",
-            event_name="NFL — Raiders vs. Chiefs",
-            attendance=68_500,
-            occupancy_rate=0.94,
-            leed_status="LEED Gold",
-            current_diversion_rate=0.21,
-            next_year_target=0.30,
-            platinum_target=0.75,
-            event_phase="Q2",
-            minutes_to_next_phase=12,
-            next_phase="Halftime",
-        )
-    data = load_excel_workbook(DEMO_WORKBOOK)["Event_Context"]
-    values = dict(zip(data["metric"], data["value"]))
+    e = _live_event()
     return EventContext(
-        venue=str(values["venue"]),
-        event_name=str(values["event_name"]),
-        attendance=int(values["attendance"]),
-        occupancy_rate=float(values["occupancy_rate"]),
-        leed_status=str(values["leed_status"]),
-        current_diversion_rate=float(values["current_diversion_rate"]),
-        next_year_target=float(values["next_year_target"]),
-        platinum_target=float(values["platinum_target"]),
-        event_phase=str(values["event_phase"]),
-        minutes_to_next_phase=int(values["minutes_to_next_phase"]),
-        next_phase=str(values["next_phase"]),
+        venue=str(e["venue"]),
+        event_name=str(e["event_name"]),
+        attendance=int(e["attendance"]),
+        occupancy_rate=float(e["occupancy_rate"]),
+        leed_status=str(e["leed_status"] or ""),
+        current_diversion_rate=float(e["current_diversion_rate"]),
+        next_year_target=float(e["next_year_target"]),
+        platinum_target=float(e["platinum_target"]),
+        event_phase=str(e["event_phase"]),
+        minutes_to_next_phase=int(e["minutes_to_next_phase"]),
+        next_phase=str(e["next_phase"]),
     )
 
+
+# ── Waste ──────────────────────────────────────────────────────────────────────
 
 def load_waste_trend() -> pd.DataFrame:
     trend = load_excel_workbook(DEMO_WORKBOOK)["Waste_Trend"].copy()
@@ -115,7 +104,8 @@ def load_waste_trend() -> pd.DataFrame:
 
 
 def get_waste_streams() -> pd.DataFrame:
-    return load_excel_workbook(DEMO_WORKBOOK)["Waste_Streams"].copy()
+    e = _live_event()
+    return db.get_waste_streams(e["event_id"])
 
 
 def get_product_risk() -> pd.DataFrame:
@@ -126,406 +116,37 @@ def get_section_hotspots() -> pd.DataFrame:
     return load_excel_workbook(DEMO_WORKBOOK)["Section_Hotspots"].copy()
 
 
-def get_energy_snapshot() -> pd.DataFrame:
-    return load_excel_workbook(DEMO_WORKBOOK)["Energy_Context"].copy()
-
-
-def get_governance_feeds() -> pd.DataFrame:
-    return load_excel_workbook(DEMO_WORKBOOK)["Governance_Feeds"].copy()
-
-
-def get_operational_summary() -> pd.DataFrame:
-    if _get_sport() == "nfl":
-        return pd.DataFrame([
-            {"metric": "energy_per_fan",   "value": 2.4,  "status": "Medium"},
-            {"metric": "carbon_intensity",  "value": 92.1, "status": "Medium"},
-        ])
-    return load_excel_workbook(DEMO_WORKBOOK)["Operational_Summary"].copy()
-
-
-def get_water_context() -> pd.DataFrame:
-    if _get_sport() == "nfl":
-        return pd.DataFrame([
-            {"metric": "water_per_attendee", "value": 27.5},
-        ])
-    return load_excel_workbook(DEMO_WORKBOOK)["Water_Context"].copy()
-
-
-def get_pos_sample() -> pd.DataFrame:
-    return load_excel_workbook(DEMO_WORKBOOK)["POS_Sample"].copy()
-
-
-def get_zone_status() -> pd.DataFrame:
-    return load_excel_workbook(DEMO_WORKBOOK)["Zone_Status"].copy()
-
-
-def get_environmental_conditions() -> pd.DataFrame:
-    return load_excel_workbook(DEMO_WORKBOOK)["Environmental_Conditions"].copy()
-
-
-def get_environmental_risk() -> pd.DataFrame:
-    return load_excel_workbook(DEMO_WORKBOOK)["Environmental_Risk"].copy()
-
-
-def get_env_timeseries(current_minute: int) -> pd.DataFrame:
-    """
-    Temp (°F) and AQI trend through the event.
-    Columns: minute, label, temp_f, aqi.
-    live_temp / live_aqi are NaN after current_minute.
-    """
-    sport = _get_sport()
-    if sport == "nfl":
-        time_points = np.array([-30, -15, 0, 15, 30, 45, 60, 75, 90, 105, 120])
-        base_temp   = np.array([74, 75, 76, 77, 78, 79, 79, 78, 77, 76, 75], dtype=float)
-        base_aqi    = np.array([44, 46, 48, 50, 52, 55, 57, 56, 55, 54, 53], dtype=float)
-    else:
-        time_points = np.array([-30, -15, 0, 15, 30, 45, 60, 75, 90])
-        base_temp   = np.array([74, 75, 76, 77, 78, 78, 79, 78, 77], dtype=float)
-        base_aqi    = np.array([42, 44, 47, 50, 52, 53, 55, 54, 52], dtype=float)
-
-    rng   = np.random.default_rng(seed=77)
-    noise_t = rng.normal(0, 0.3, len(time_points))
-    noise_a = rng.normal(0, 1.0, len(time_points))
-
-    live_temp = np.where(time_points <= current_minute, base_temp + noise_t, np.nan)
-    live_aqi  = np.where(time_points <= current_minute, base_aqi  + noise_a, np.nan)
-
-    return pd.DataFrame({
-        "minute":    time_points,
-        "label":     _make_time_labels(time_points, sport),
-        "temp_f":    base_temp + noise_t,   # full line (lighter, for context)
-        "aqi":       base_aqi  + noise_a,
-        "live_temp": live_temp,
-        "live_aqi":  live_aqi,
-    })
-
-
-def get_post_event_summary() -> dict:
-    """
-    Simulated final event metrics for the After Action Report.
-    Represents a completed event — values are end-of-game totals.
-    """
-    sport = _get_sport()
-    if sport == "nfl":
-        return {
-            "event_name":          "NFL — Raiders vs. Chiefs",
-            "venue":               "Pilot Stadium",
-            "date":                "June 6, 2026",
-            "attendance":          68_500,
-            "occupancy_rate":      0.94,
-            "duration_min":        210,
-            "peak_temp_f":         79,
-            "peak_aqi":            58,
-            "peak_humidity_pct":   62,
-            # Waste — max possible diversion (ceiling set by packaging mix)
-            "max_possible_diversion_pct": 28,
-            "max_div_target_pct":  35,
-            "total_waste_lb":      8_240,
-            # Water
-            "restroom_check_done": True,
-            "fixture_faults":      1,
-            # Energy
-            "final_kwh_per_fan":   2.6,
-            "energy_benchmark_kwh": 2.4,
-            "total_kwh":           178_100,
-            # Water
-            "final_lpf":           28.2,
-            "water_guide_lpf":     20.0,
-            "total_litres":        1_931_700,
-            # Environmental
-            "peak_density_pct":    94,
-            "env_incidents":       0,
-            # Notable moments
-            "incidents": [
-                "Gate Plaza bins reached 95% capacity during Q3 surge",
-                "Restroom fixture fault flagged in Lower Concourse East — resolved in 8 min",
-                "Zone B density peaked at 94% at halftime",
-            ],
-            "actions_taken": [
-                "Overflow bins repositioned to Gate Plaza before halftime",
-                "Maintenance dispatched to Lower Concourse East restrooms",
-                "Green team redirected to Lower Concourse East at Q2",
-            ],
-        }
-    else:
-        return {
-            "event_name":          "Soccer — Pilot FC vs. Riverside United",
-            "venue":               "Pilot Stadium",
-            "date":                "June 6, 2026",
-            "attendance":          64_200,
-            "occupancy_rate":      0.91,
-            "duration_min":        135,
-            "peak_temp_f":         78,
-            "peak_aqi":            52,
-            "peak_humidity_pct":   65,
-            # Waste — max possible diversion (ceiling set by packaging mix)
-            "max_possible_diversion_pct": 54,
-            "max_div_target_pct":  50,
-            "total_waste_lb":      6_890,
-            # Energy
-            "final_kwh_per_fan":   1.9,
-            "energy_benchmark_kwh": 1.5,
-            "total_kwh":           121_980,
-            # Water — restroom check completed, no faults
-            "final_lpf":           25.1,
-            "water_guide_lpf":     20.0,
-            "restroom_check_done": True,
-            "fixture_faults":      0,
-            "total_litres":        1_611_420,
-            # Environmental
-            "peak_density_pct":    93,
-            "env_incidents":       0,
-            # Notable moments
-            "incidents": [
-                "Gate Plaza bins reached overflow capacity at halftime",
-                "Zone B density peaked at 92% during halftime surge",
-                "Water usage 25% above 20 L guide — restroom demand driven by high occupancy",
-            ],
-            "actions_taken": [
-                "Overflow bins repositioned to Gate Plaza 15 min before halftime",
-                "Green team ambassador redirected to Lower Concourse East at 30'",
-                "Compost signage placed at hot food vendor stands in Zone C",
-            ],
-        }
-
-
 def get_waste_diversion_history(current_max_possible: float, n: int = 10) -> pd.DataFrame:
-    """
-    Generate realistic mock max-possible diversion history for past events.
-    Max possible is based on packaging mix sold — varies event to event.
-    Seeded for reproducibility in demo.
-    """
-    rng = np.random.default_rng(seed=42)
-    dates = pd.date_range(end="2026-04-25", periods=n, freq="2D")
-    if _get_sport() == "nfl":
-        # NFL venues historically have lower diversion rates
-        base = np.linspace(0.18, 0.25, n)
-        noise = rng.normal(0, 0.02, n)
-        max_possible = np.clip(base + noise, 0.12, 0.35)
-    else:
-        # Realistic variation: most events land 46-58%, trending slightly upward
-        base = np.linspace(0.46, 0.52, n)
-        noise = rng.normal(0, 0.025, n)
-        max_possible = np.clip(base + noise, 0.40, 0.65)
-    return pd.DataFrame({
-        "event": [f"Event {i+1}" for i in range(n)],
-        "date": dates,
-        "max_possible_pct": (max_possible * 100).round(1),
-        "is_current": [False] * n,
-    })
-
-
-def get_energy_history(current_kwh: float, n: int = 10) -> pd.DataFrame:
-    """Mock total kWh history for past events. Seeded for demo reproducibility."""
-    rng = np.random.default_rng(seed=43)
-    dates = pd.date_range(end="2026-04-25", periods=n, freq="2D")
-    if _get_sport() == "nfl":
-        base = np.linspace(155_000, 175_000, n)
-        noise = rng.normal(0, 5_000, n)
-        totals = np.clip(base + noise, 130_000, 200_000)
-    else:
-        base = np.linspace(108_000, 118_000, n)
-        noise = rng.normal(0, 4_000, n)
-        totals = np.clip(base + noise, 90_000, 140_000)
-    return pd.DataFrame({
-        "event": [f"Event {i+1}" for i in range(n)],
-        "date": dates,
-        "total_kwh": totals.round(0),
-        "is_current": [False] * n,
-    })
-
-
-def get_energy_timeseries(current_kwh: float, current_minute: int) -> pd.DataFrame:
-    """
-    Cumulative kWh through the game — tonight vs historical average.
-    current_minute: game minute (0 = kickoff, 45 = halftime, 90 = full time).
-    Columns: minute, label, avg_kwh, live_kwh (NaN after current_minute).
-    """
-    time_points = np.array([-30, -20, -10, 0, 10, 20, 30, 40, 45, 55, 65, 75, 85, 90, 100, 110])
-
-    # Cumulative fraction of total event energy consumed at each game minute
-    base_fractions = np.array([
-        0.00, 0.04, 0.10, 0.17, 0.26, 0.35, 0.43, 0.48,
-        0.53, 0.61, 0.70, 0.79, 0.88, 0.93, 0.97, 1.00,
-    ])
-
-    # Historical average across 10 past events
-    rng = np.random.default_rng(seed=45)
-    sport = _get_sport()
-    if sport == "nfl":
-        past_totals = np.clip(
-            np.linspace(155_000, 175_000, 10) + rng.normal(0, 5_000, 10),
-            130_000, 200_000,
-        )
-    else:
-        past_totals = np.clip(
-            np.linspace(108_000, 118_000, 10) + rng.normal(0, 3_000, 10),
-            90_000, 140_000,
-        )
-    avg_curves = []
-    for total in past_totals:
-        noise = rng.normal(0, 0.006, len(base_fractions))
-        fracs = np.maximum.accumulate(np.clip(base_fractions + noise, 0, 1))
-        fracs /= fracs[-1]
-        avg_curves.append(fracs * total)
-    avg_curve = np.mean(avg_curves, axis=0)
-
-    # Live curve — current_kwh is the projected full-game total; show cumulative up to current_minute
-    live_curve = np.where(time_points <= current_minute, base_fractions * current_kwh, np.nan)
-
-    return pd.DataFrame({
-        "minute":   time_points,
-        "label":    _make_time_labels(time_points, sport),
-        "avg_kwh":  avg_curve,
-        "live_kwh": live_curve,
-    })
-
-
-def get_max_div_by_gametime(current_minute: int) -> pd.DataFrame:
-    """
-    Max possible diversion rate at each game minute, driven by packaging mix sold.
-    Fluctuates as sales patterns shift — higher when drinks dominate, lower during food surges.
-    Columns: minute, label, avg_pct, live_pct (NaN after current_minute).
-    """
-    time_points = np.array([-30, -20, -10, 0, 10, 20, 30, 40, 45, 55, 65, 75, 85, 90, 100, 110])
-
-    # Shape: pre-game drinks (cans) → high; food surge at HT → dips; drinks return 2nd half
-    base_max = np.array([
-        57, 56, 54, 52, 50, 48, 47, 46,   # pre-game → 40' (food builds)
-        44,                                 # HT food surge → dips
-        50, 52, 54, 55, 56,                # 55'→FT (drinks dominate again)
-        57, 58,                             # post-game
-    ], dtype=float)
-
-    rng = np.random.default_rng(seed=47)
-    # Historical avg — slight per-event variation
-    avg_curves = []
-    for _ in range(10):
-        noise = rng.normal(0, 1.5, len(time_points))
-        avg_curves.append(np.clip(base_max + noise, 35, 70))
-    avg_curve = np.mean(avg_curves, axis=0)
-
-    # Tonight — own variation, only shown to current_minute
-    tonight = np.clip(base_max + rng.normal(0, 2.0, len(time_points)), 35, 70)
-    live_curve = np.where(time_points <= current_minute, tonight, np.nan)
-
-    labels = []
-    for m in time_points:
-        if m == -30:  labels.append("Pre-game")
-        elif m < 0:   labels.append(f"{m}'")
-        elif m == 0:  labels.append("KO")
-        elif m == 45: labels.append("HT")
-        elif m == 90: labels.append("FT")
-        elif m > 90:  labels.append(f"+{m - 90}'")
-        else:         labels.append(f"{m}'")
-
-    return pd.DataFrame({
-        "minute":   time_points,
-        "label":    labels,
-        "avg_pct":  avg_curve,
-        "live_pct": live_curve,
-    })
+    df = db.get_waste_diversion_history(_get_sport(), n)
+    df = df.copy()
+    df["event"] = [f"Event {i+1}" for i in range(len(df))]
+    df["is_current"] = False
+    df["date"] = pd.to_datetime(df["date"])
+    return df[["event", "date", "max_possible_pct", "is_current"]]
 
 
 def get_section_sales_breakdown() -> list[dict]:
-    """
-    Section-level POS packaging breakdown for bin placement intelligence.
-    Tries to aggregate from POS sample; falls back to seeded synthetic data.
-    """
-    try:
-        pos = get_pos_sample()
-        required = {"section", "item_name", "quantity", "recyclable_flag", "compostable_flag"}
-        if not required.issubset(pos.columns):
-            raise ValueError("Missing columns")
-        result = []
-        section_map = {
-            "Lower Concourse East": "C",
-            "Gate Plaza":           "B",
-            "Premium Level":        "D",
-            "Upper Concourse West": "A",
-        }
-        for section, zone in section_map.items():
-            grp = pos[pos["section"] == section]
-            if grp.empty:
-                raise ValueError("No data")
-            total      = grp["quantity"].sum()
-            recyclable = grp.loc[grp["recyclable_flag"] == 1, "quantity"].sum()
-            compostable = grp.loc[grp["compostable_flag"] == 1, "quantity"].sum()
-            landfill   = max(0, total - recyclable - compostable)
-            top_items  = (grp.groupby("item_name")["quantity"]
-                          .sum().sort_values(ascending=False).head(3).index.tolist())
-            result.append({
-                "section": section, "zone": zone,
-                "recyclable_pct":  recyclable  / total if total else 0,
-                "compostable_pct": compostable / total if total else 0,
-                "landfill_pct":    landfill    / total if total else 0,
-                "top_items": top_items,
-            })
-        return result
-    except Exception:
-        pass
-
-    # Synthetic fallback — seeded for demo reproducibility
-    if _get_sport() == "nfl":
-        return [
-            {
-                "section": "Lower Concourse East", "zone": "C",
-                "recyclable_pct": 0.28, "compostable_pct": 0.10, "landfill_pct": 0.62,
-                "top_items": ["Hot Wings", "Nachos", "Beer Can"],
-            },
-            {
-                "section": "Gate Plaza", "zone": "B",
-                "recyclable_pct": 0.51, "compostable_pct": 0.07, "landfill_pct": 0.42,
-                "top_items": ["Beer Can", "Soda", "Pretzel"],
-            },
-            {
-                "section": "Premium Level", "zone": "D",
-                "recyclable_pct": 0.38, "compostable_pct": 0.15, "landfill_pct": 0.47,
-                "top_items": ["Whiskey Cup", "Burger", "Beer Can"],
-            },
-            {
-                "section": "Upper Concourse West", "zone": "A",
-                "recyclable_pct": 0.35, "compostable_pct": 0.18, "landfill_pct": 0.47,
-                "top_items": ["Popcorn", "Hot Dog", "Beer Can"],
-            },
-        ]
-    return [
-        {
-            "section": "Lower Concourse East", "zone": "C",
-            "recyclable_pct": 0.34, "compostable_pct": 0.14, "landfill_pct": 0.52,
-            "top_items": ["Hot Dog", "Nachos", "Beer Can"],
-        },
-        {
-            "section": "Gate Plaza", "zone": "B",
-            "recyclable_pct": 0.58, "compostable_pct": 0.08, "landfill_pct": 0.34,
-            "top_items": ["Beer Can", "Water Bottle", "Soda"],
-        },
-        {
-            "section": "Premium Level", "zone": "D",
-            "recyclable_pct": 0.44, "compostable_pct": 0.19, "landfill_pct": 0.37,
-            "top_items": ["Wine Cup", "Beer Can", "Pretzel"],
-        },
-        {
-            "section": "Upper Concourse West", "zone": "A",
-            "recyclable_pct": 0.41, "compostable_pct": 0.23, "landfill_pct": 0.36,
-            "top_items": ["Beer Can", "Popcorn", "Hot Dog"],
-        },
-    ]
+    e = _live_event()
+    rows = db.get_section_sales(e["event_id"])
+    result = []
+    for row in rows.itertuples(index=False):
+        result.append({
+            "section":         row.section,
+            "zone":            row.zone,
+            "recyclable_pct":  row.recyclable_pct,
+            "compostable_pct": row.compostable_pct,
+            "landfill_pct":    row.landfill_pct,
+            "top_items":       [x for x in [row.top_item_1, row.top_item_2, row.top_item_3] if x],
+        })
+    return result
 
 
 def get_waste_diversion_timeseries(current_div: float, current_minute: int) -> pd.DataFrame:
-    """
-    Estimated diversion rate % through the game — tonight vs historical average.
-    current_div: current diversion rate as decimal (e.g. 0.28).
-    Columns: minute, label, avg_pct, live_pct (NaN after current_minute).
-    """
     time_points = np.array([-30, -20, -10, 0, 10, 20, 30, 40, 45, 55, 65, 75, 85, 90, 100, 110])
-
     base_fractions = np.array([
         0.00, 0.02, 0.06, 0.12, 0.20, 0.30, 0.38, 0.45,
         0.52, 0.62, 0.70, 0.78, 0.86, 0.92, 0.97, 1.00,
     ])
-
     rng = np.random.default_rng(seed=46)
     past_finals = np.clip(
         np.linspace(0.44, 0.50, 10) + rng.normal(0, 0.015, 10), 0.35, 0.60
@@ -560,103 +181,238 @@ def get_waste_diversion_timeseries(current_div: float, current_minute: int) -> p
     })
 
 
-def get_water_timeseries(current_litres: float, current_minute: int) -> pd.DataFrame:
-    """
-    Cumulative litres through the game — tonight vs historical average.
-    Noticeable halftime spike as restroom demand peaks.
-    Columns: minute, label, avg_litres, live_litres (NaN after current_minute).
-    """
+def get_max_div_by_gametime(current_minute: int) -> pd.DataFrame:
     time_points = np.array([-30, -20, -10, 0, 10, 20, 30, 40, 45, 55, 65, 75, 85, 90, 100, 110])
-
-    # Cumulative fraction — sharper halftime spike than energy
-    base_fractions = np.array([
-        0.00, 0.03, 0.07, 0.13, 0.21, 0.30, 0.38, 0.44,
-        0.55,                                               # HT restroom surge
-        0.63, 0.71, 0.79, 0.87, 0.92, 0.97, 1.00,
-    ])
-
-    rng = np.random.default_rng(seed=49)
-    sport = _get_sport()
-    if sport == "nfl":
-        past_totals = np.clip(
-            np.linspace(1_800_000, 2_100_000, 10) + rng.normal(0, 80_000, 10),
-            1_500_000, 2_500_000,
-        )
-    else:
-        past_totals = np.clip(
-            np.linspace(1_400_000, 1_600_000, 10) + rng.normal(0, 60_000, 10),
-            1_100_000, 2_000_000,
-        )
+    base_max = np.array([
+        57, 56, 54, 52, 50, 48, 47, 46,
+        44,
+        50, 52, 54, 55, 56,
+        57, 58,
+    ], dtype=float)
+    rng = np.random.default_rng(seed=47)
     avg_curves = []
-    for total in past_totals:
-        noise = rng.normal(0, 0.006, len(base_fractions))
-        fracs = np.maximum.accumulate(np.clip(base_fractions + noise, 0, 1))
-        fracs /= fracs[-1]
-        avg_curves.append(fracs * total)
+    for _ in range(10):
+        noise = rng.normal(0, 1.5, len(time_points))
+        avg_curves.append(np.clip(base_max + noise, 35, 70))
     avg_curve = np.mean(avg_curves, axis=0)
+    tonight = np.clip(base_max + rng.normal(0, 2.0, len(time_points)), 35, 70)
+    live_curve = np.where(time_points <= current_minute, tonight, np.nan)
 
-    live_curve = np.where(time_points <= current_minute, base_fractions * current_litres, np.nan)
+    labels = []
+    for m in time_points:
+        if m == -30:  labels.append("Pre-game")
+        elif m < 0:   labels.append(f"{m}'")
+        elif m == 0:  labels.append("KO")
+        elif m == 45: labels.append("HT")
+        elif m == 90: labels.append("FT")
+        elif m > 90:  labels.append(f"+{m - 90}'")
+        else:         labels.append(f"{m}'")
 
     return pd.DataFrame({
-        "minute":      time_points,
-        "label":       _make_time_labels(time_points, sport),
-        "avg_litres":  avg_curve,
-        "live_litres": live_curve,
+        "minute":   time_points,
+        "label":    labels,
+        "avg_pct":  avg_curve,
+        "live_pct": live_curve,
     })
 
 
-def get_water_history(current_litres: float, n: int = 10) -> pd.DataFrame:
-    """Mock total litres history for past events. Seeded for demo reproducibility."""
-    rng = np.random.default_rng(seed=44)
-    dates = pd.date_range(end="2026-04-25", periods=n, freq="2D")
-    if _get_sport() == "nfl":
-        base = np.linspace(1_800_000, 2_100_000, n)
-        noise = rng.normal(0, 80_000, n)
-        totals = np.clip(base + noise, 1_500_000, 2_500_000)
-    else:
-        base = np.linspace(1_400_000, 1_600_000, n)
-        noise = rng.normal(0, 60_000, n)
-        totals = np.clip(base + noise, 1_100_000, 2_000_000)
+# ── Energy ─────────────────────────────────────────────────────────────────────
+
+def get_energy_snapshot() -> pd.DataFrame:
+    e = _live_event()
+    return db.get_energy_systems(e["event_id"])
+
+
+def get_governance_feeds() -> pd.DataFrame:
+    return load_excel_workbook(DEMO_WORKBOOK)["Governance_Feeds"].copy()
+
+
+def get_operational_summary() -> pd.DataFrame:
+    e = _live_event()
+    return pd.DataFrame([
+        {"metric": "energy_per_fan",  "value": float(e["energy_per_fan_kwh"]), "status": "Medium"},
+        {"metric": "carbon_intensity", "value": 92.1 if _get_sport() == "nfl" else 78.4, "status": "Medium"},
+    ])
+
+
+def get_energy_history(current_kwh: float, n: int = 10) -> pd.DataFrame:
+    df = db.get_past_events(_get_sport(), n)
+    df = df.copy()
+    df["event"] = [f"Event {i+1}" for i in range(len(df))]
+    df["is_current"] = False
+    df = df.rename(columns={"event_date": "date"})
+    df["date"] = pd.to_datetime(df["date"])
+    return df[["event", "date", "total_kwh", "is_current"]]
+
+
+def get_energy_timeseries(current_kwh: float, current_minute: int) -> pd.DataFrame:
+    sport = _get_sport()
+    e = _live_event()
+
+    live_ts  = db.get_energy_timeseries(e["event_id"])
+    avg_ts   = db.get_energy_timeseries_avg(sport)
+
+    minutes  = live_ts["minute"].to_numpy()
+    live_kwh = np.where(minutes <= current_minute, live_ts["cumulative_kwh"].to_numpy(), np.nan)
+
+    avg_kwh  = np.interp(minutes, avg_ts["minute"].to_numpy(), avg_ts["avg_kwh"].to_numpy())
+
     return pd.DataFrame({
-        "event": [f"Event {i+1}" for i in range(n)],
-        "date": dates,
-        "total_litres": totals.round(0),
-        "is_current": [False] * n,
+        "minute":   minutes,
+        "label":    _make_time_labels(minutes, sport),
+        "avg_kwh":  avg_kwh,
+        "live_kwh": live_kwh,
+    })
+
+
+# ── Water ──────────────────────────────────────────────────────────────────────
+
+def get_water_context() -> pd.DataFrame:
+    e = _live_event()
+    return pd.DataFrame([
+        {"metric": "water_per_attendee", "value": float(e["water_per_fan_litres"])},
+    ])
+
+
+def get_pos_sample() -> pd.DataFrame:
+    return load_excel_workbook(DEMO_WORKBOOK)["POS_Sample"].copy()
+
+
+def get_zone_status() -> pd.DataFrame:
+    e = _live_event()
+    return db.get_zone_status(e["event_id"])
+
+
+def get_water_history(current_litres: float, n: int = 10) -> pd.DataFrame:
+    df = db.get_past_events(_get_sport(), n)
+    df = df.copy()
+    df["event"] = [f"Event {i+1}" for i in range(len(df))]
+    df["is_current"] = False
+    df = df.rename(columns={"event_date": "date"})
+    df["date"] = pd.to_datetime(df["date"])
+    return df[["event", "date", "total_litres", "is_current"]]
+
+
+def get_water_timeseries(current_litres: float, current_minute: int) -> pd.DataFrame:
+    sport = _get_sport()
+    e = _live_event()
+
+    live_ts   = db.get_water_timeseries(e["event_id"])
+    avg_ts    = db.get_water_timeseries_avg(sport)
+
+    minutes   = live_ts["minute"].to_numpy()
+    live_litr = np.where(minutes <= current_minute, live_ts["cumulative_litres"].to_numpy(), np.nan)
+    avg_litr  = np.interp(minutes, avg_ts["minute"].to_numpy(), avg_ts["avg_litres"].to_numpy())
+
+    return pd.DataFrame({
+        "minute":      minutes,
+        "label":       _make_time_labels(minutes, sport),
+        "avg_litres":  avg_litr,
+        "live_litres": live_litr,
     })
 
 
 def get_water_by_system(total_litres: float) -> list[dict]:
-    """
-    Water usage breakdown by venue system.
-    Shares are realistic for a modern stadium event.
-    Returns list of dicts: system, share, litres, status, note.
-    """
-    systems = [
-        {
-            "system":  "Restrooms",
-            "share":   0.67,
-            "status":  "Monitor",
-            "note":    "Dominant consumer — peaks sharply at halftime. Submeter spike = immediate check.",
-        },
-        {
-            "system":  "Concessions & food prep",
-            "share":   0.19,
-            "status":  "Stable",
-            "note":    "Steady throughout event. Elevated on high-attendance nights.",
-        },
-        {
-            "system":  "HVAC & cooling",
-            "share":   0.09,
-            "status":  "Stable",
-            "note":    "Higher in warm weather. Cooling towers account for most of this share.",
-        },
-        {
-            "system":  "Field irrigation",
-            "share":   0.05,
-            "status":  "Stable",
-            "note":    "Confirmed off during event window. Pre- and post-event only.",
-        },
-    ]
-    for s in systems:
-        s["litres"] = round(total_litres * s["share"])
-    return systems
+    e = _live_event()
+    rows = db.get_water_systems(e["event_id"])
+    result = []
+    for row in rows.itertuples(index=False):
+        result.append({
+            "system": row.system,
+            "share":  row.share,
+            "litres": round(total_litres * row.share),
+            "status": row.status,
+            "note":   row.note,
+        })
+    return result
+
+
+# ── Environmental ──────────────────────────────────────────────────────────────
+
+def get_environmental_conditions() -> pd.DataFrame:
+    e = _live_event()
+    return db.get_env_conditions(e["event_id"])
+
+
+def get_environmental_risk() -> pd.DataFrame:
+    e = _live_event()
+    return db.get_env_risk(e["event_id"])
+
+
+def get_env_timeseries(current_minute: int) -> pd.DataFrame:
+    sport = _get_sport()
+    e = _live_event()
+
+    ts      = db.get_env_timeseries(e["event_id"])
+    minutes = ts["minute"].to_numpy()
+    temp_f  = ts["temp_f"].to_numpy()
+    aqi     = ts["aqi"].to_numpy()
+
+    live_temp = np.where(minutes <= current_minute, temp_f, np.nan)
+    live_aqi  = np.where(minutes <= current_minute, aqi,    np.nan)
+
+    return pd.DataFrame({
+        "minute":    minutes,
+        "label":     _make_time_labels(minutes, sport),
+        "temp_f":    temp_f,
+        "aqi":       aqi,
+        "live_temp": live_temp,
+        "live_aqi":  live_aqi,
+    })
+
+
+# ── Post-event ─────────────────────────────────────────────────────────────────
+
+def get_post_event_summary() -> dict:
+    e = _live_event()
+    sport = _get_sport()
+
+    if sport == "nfl":
+        incidents = [
+            "Gate Plaza bins reached 95% capacity during Q3 surge",
+            "Restroom fixture fault flagged in Lower Concourse East — resolved in 8 min",
+            "Zone B density peaked at 94% at halftime",
+        ]
+        actions_taken = [
+            "Overflow bins repositioned to Gate Plaza before halftime",
+            "Maintenance dispatched to Lower Concourse East restrooms",
+            "Green team redirected to Lower Concourse East at Q2",
+        ]
+    else:
+        incidents = [
+            "Gate Plaza bins reached overflow capacity at halftime",
+            "Zone B density peaked at 92% during halftime surge",
+            "Water usage 25% above 20 L guide — restroom demand driven by high occupancy",
+        ]
+        actions_taken = [
+            "Overflow bins repositioned to Gate Plaza 15 min before halftime",
+            "Green team ambassador redirected to Lower Concourse East at 30'",
+            "Compost signage placed at hot food vendor stands in Zone C",
+        ]
+
+    return {
+        "event_name":                 e["event_name"],
+        "venue":                      e["venue"],
+        "date":                       "June 6, 2026",
+        "attendance":                 int(e["attendance"]),
+        "occupancy_rate":             float(e["occupancy_rate"]),
+        "duration_min":               int(e["duration_min"]),
+        "peak_temp_f":                float(e["peak_temp_f"]),
+        "peak_aqi":                   float(e["peak_aqi"]),
+        "peak_humidity_pct":          float(e["peak_humidity_pct"]),
+        "max_possible_diversion_pct": float(e["max_possible_diversion_pct"]),
+        "max_div_target_pct":         float(e["max_div_target_pct"]),
+        "total_waste_lb":             float(e["total_waste_lb"]),
+        "final_kwh_per_fan":          float(e["energy_per_fan_kwh"]),
+        "energy_benchmark_kwh":       float(e["energy_benchmark_kwh"]),
+        "total_kwh":                  float(e["total_kwh"]),
+        "final_lpf":                  float(e["water_per_fan_litres"]),
+        "water_guide_lpf":            float(e["water_guide_lpf"]),
+        "total_litres":               float(e["total_litres"]),
+        "restroom_check_done":        bool(e["restroom_check_done"]),
+        "fixture_faults":             int(e["fixture_faults"]),
+        "peak_density_pct":           float(e["peak_density_pct"]),
+        "env_incidents":              int(e["env_incidents"]),
+        "incidents":                  incidents,
+        "actions_taken":              actions_taken,
+    }
