@@ -428,8 +428,71 @@ def configure_page() -> None:
             padding: 1rem;
         }
 
-        @media (max-width: 900px) {
+        /* ── Responsive — medium screens (laptops, small monitors) ── */
+        @media (max-width: 1100px) {
+            .kpi-value { font-size: 1.75rem; }
+            .ap-phase-banner { gap: .8rem; padding: .8rem 1rem; }
+            .ap-phase-banner .phase-meta { font-size: .78rem; }
             .ap-conditions { grid-template-columns: repeat(3, 1fr); }
+            .ap-cond-tile .cond-value { font-size: 1.2rem; }
+        }
+
+        /* ── Responsive — tablet / small monitor ── */
+        @media (max-width: 900px) {
+            /* Stack all Streamlit column blocks */
+            [data-testid="stHorizontalBlock"] {
+                flex-direction: column !important;
+            }
+            [data-testid="column"] {
+                width: 100% !important;
+                flex: none !important;
+                min-width: 100% !important;
+            }
+
+            /* Scale down KPI */
+            .kpi-value { font-size: 1.4rem; }
+            .kpi-label { font-size: .62rem; }
+
+            /* Phase banner — stack items */
+            .ap-phase-banner {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: .5rem;
+                padding: .75rem 1rem;
+            }
+            .ap-phase-banner .phase-meta { margin-left: 0; font-size: .78rem; }
+            .ap-phase-banner .phase-countdown { font-size: .9rem; }
+            .ap-phase-banner .phase-countdown strong { font-size: 1rem; }
+
+            /* Conditions strip — 2 columns */
+            .ap-conditions { grid-template-columns: repeat(2, 1fr); }
+            .ap-cond-tile .cond-value { font-size: 1.1rem; }
+
+            /* Gap hero — stack */
+            .ap-gap-hero { flex-direction: column; align-items: flex-start; gap: .6rem; }
+
+            /* Reduce container padding */
+            .main .block-container {
+                padding-left: .75rem !important;
+                padding-right: .75rem !important;
+                padding-top: .75rem;
+            }
+
+            /* Priority cards — reduce padding */
+            .ap-priority-card { padding: .8rem .9rem; }
+            .pc-headline { font-size: .88rem; }
+
+            /* General font scaling */
+            .ap-monitor-banner { font-size: .82rem; }
+            .ap-section-header { font-size: 11px; }
+        }
+
+        /* ── Responsive — mobile ── */
+        @media (max-width: 600px) {
+            .kpi-value { font-size: 1.2rem; }
+            .ap-conditions { grid-template-columns: repeat(2, 1fr); }
+            .ap-phase-banner { padding: .6rem .8rem; }
+            h1 { font-size: 1.6rem !important; }
         }
         </style>
         """,
