@@ -176,7 +176,7 @@ def get_water_timeseries_avg(sport: str) -> pd.DataFrame:
 def get_env_conditions(event_id: int) -> pd.DataFrame:
     """Current snapshot — maps to Environmental_Conditions sheet."""
     return query(
-        "SELECT metric, value, unit, note FROM env_conditions WHERE event_id = ?",
+        "SELECT metric, value, unit, note, status FROM env_conditions WHERE event_id = ?",
         (event_id,),
     )
 

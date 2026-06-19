@@ -141,7 +141,8 @@ CREATE TABLE IF NOT EXISTS env_conditions (
     metric      TEXT NOT NULL,
     value       REAL NOT NULL,
     unit        TEXT NOT NULL,
-    note        TEXT NOT NULL
+    note        TEXT NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'Stable'
 );
 
 -- Environmental risk factor cards
@@ -309,14 +310,14 @@ def seed(conn: sqlite3.Connection) -> None:
 
     # Environmental conditions
     cur.executemany(
-        "INSERT INTO env_conditions (event_id, metric, value, unit, note) VALUES (?,?,?,?,?)",
+        "INSERT INTO env_conditions (event_id, metric, value, unit, note, status) VALUES (?,?,?,?,?,?)",
         [
-            (soccer_live_id, "outdoor_temp",  78,   "°F",  "Warm afternoon — heat risk in outdoor sections"),
-            (soccer_live_id, "indoor_temp",   71,   "°F",  "HVAC maintaining target range"),
-            (soccer_live_id, "aqi",           52,   "AQI", "Moderate — acceptable but elevated"),
-            (soccer_live_id, "humidity",      65,   "%",   "Elevated — compounds heat stress risk"),
-            (soccer_live_id, "wind_mph",       8,   "mph", "Light breeze — minimal cooling effect outdoors"),
-            (soccer_live_id, "avg_density",   84,   "%",   "84% average density amplifies all thermal risks"),
+            (soccer_live_id, "outdoor_temp",      78,   "°F",  "Warm afternoon — heat risk in outdoor sections", "Monitor"),
+            (soccer_live_id, "indoor_temp",       71,   "°F",  "HVAC maintaining target range",                  "Stable"),
+            (soccer_live_id, "aqi",               52,   "AQI", "Moderate — acceptable but elevated",             "Monitor"),
+            (soccer_live_id, "humidity",          65,   "%",   "Elevated — compounds heat stress risk",          "Monitor"),
+            (soccer_live_id, "wind_speed",         8,   "mph", "Light breeze — minimal cooling effect outdoors", "Stable"),
+            (soccer_live_id, "crowd_density_avg", 84,   "%",   "84% average density amplifies all thermal risks","Monitor"),
         ]
     )
 
@@ -514,14 +515,14 @@ def seed(conn: sqlite3.Connection) -> None:
 
     # Environmental conditions — NFL
     cur.executemany(
-        "INSERT INTO env_conditions (event_id, metric, value, unit, note) VALUES (?,?,?,?,?)",
+        "INSERT INTO env_conditions (event_id, metric, value, unit, note, status) VALUES (?,?,?,?,?,?)",
         [
-            (nfl_live_id, "outdoor_temp", 79,   "°F",  "Warm conditions — heat risk elevated for outdoor sections"),
-            (nfl_live_id, "indoor_temp",  72,   "°F",  "HVAC maintaining target range"),
-            (nfl_live_id, "aqi",          58,   "AQI", "Moderate — acceptable but monitor trend"),
-            (nfl_live_id, "humidity",     62,   "%",   "Moderate — compounds heat stress at high density"),
-            (nfl_live_id, "wind_mph",      6,   "mph", "Light breeze — limited cooling effect"),
-            (nfl_live_id, "avg_density",  94,   "%",   "Very high density — amplifies all thermal risks"),
+            (nfl_live_id, "outdoor_temp",      79,   "°F",  "Warm conditions — heat risk elevated for outdoor sections", "Monitor"),
+            (nfl_live_id, "indoor_temp",       72,   "°F",  "HVAC maintaining target range",                            "Stable"),
+            (nfl_live_id, "aqi",               58,   "AQI", "Moderate — acceptable but monitor trend",                  "Monitor"),
+            (nfl_live_id, "humidity",          62,   "%",   "Moderate — compounds heat stress at high density",         "Monitor"),
+            (nfl_live_id, "wind_speed",         6,   "mph", "Light breeze — limited cooling effect",                    "Stable"),
+            (nfl_live_id, "crowd_density_avg", 94,   "%",   "Very high density — amplifies all thermal risks",          "High"),
         ]
     )
 
