@@ -243,7 +243,9 @@ def render_energy_carbon() -> None:
 
     donut_col, bar_col = st.columns(2)
     with donut_col:
-        st.plotly_chart(plotly_layout(fig_donut, 300), use_container_width=True,
+        plotly_layout(fig_donut, 300)
+        fig_donut.update_layout(margin=dict(t=60, b=20, l=20, r=20))
+        st.plotly_chart(fig_donut, use_container_width=True,
                         config={"displayModeBar": False})
     with bar_col:
         st.plotly_chart(plotly_layout(fig_bar, 300), use_container_width=True,
