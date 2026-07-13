@@ -1,16 +1,20 @@
 import html as _html
 
+import plotly.graph_objects as go
 import streamlit as st
 
 from src.components.arena_components import action_card, ai_chat
 from src.services.demo_data import (
+    get_current_minute,
     get_event_context,
     get_product_risk,
     get_section_hotspots,
     get_section_sales_breakdown,
     get_waste_streams,
+    get_waste_diversion_timeseries,
 )
 from src.services.status import get_all_statuses
+from src.utils.page_config import plotly_layout
 
 # ── Zone packaging panel ───────────────────────────────────────────────────────
 def _zone_packaging_panel(section_data: list[dict]) -> None:
@@ -146,6 +150,56 @@ def render_waste_intelligence() -> None:
         st.markdown(_kpi("Est. landfill", f"{landfill_lbs:,.0f} lb",
                          "Based on packaging sold — verified by hauler post-event", "neg"),
                     unsafe_allow_html=True)
+
+
+    # ── Diversion rate — tonight vs average ──────────────────────────────────
+    current_minute = get_current_minute(ctx)
+
+    st.markdown(
+        '<div class="ap-section-header">📈 Diversion rate — tonight vs average</div>'
+        f'<div class="ap-section-sub">How diversion is building through the game · '
+        f'{ctx.event_phase} · {ctx.minutes_to_next_phase} min to {ctx.next_phase}</div>',
+        unsafe_allow_html=True,
+    )
+
+    ts = get_waste_diversion_timeseries(current_div, current_minute)
+    live_now = ts.dropna(subset=["live_pct"]).iloc[-1]
+
+    fig_ts = go.Figure()
+    fig_ts.add_trace(go.Scatter(
+        x=ts["minute"], y=ts["avg_pct"],
+        mode="lines+markers",
+        line={"color": "#6b7a8d", "width": 2},
+        marker={"size": 5, "color": "#6b7a8d"},
+        name="10-event avg",
+        hovertemplate="%{customdata}: %{y:.1f}% avg<extra></extra>",
+        customdata=ts["label"],
+    ))
+    fig_ts.add_trace(go.Scatter(
+        x=ts["minute"], y=ts["live_pct"],
+        mode="lines+markers",
+        line={"color": "#16d9e8", "width": 2.5},
+        marker={"size": 5, "color": "#16d9e8"},
+        name="Tonight",
+        connectgaps=False,
+        hovertemplate="%{customdata}: %{y:.1f}% tonight<extra></extra>",
+        customdata=ts["label"],
+    ))
+    fig_ts.add_trace(go.Scatter(
+        x=[live_now["minute"]], y=[live_now["live_pct"]],
+        mode="markers",
+        marker={"size": 11, "color": "#16d9e8",
+                "line": {"color": "#101722", "width": 2}},
+        showlegend=False, hoverinfo="skip",
+    ))
+    fig_ts.update_layout(
+        yaxis=dict(title="Diversion rate (%)", tickformat=".0f"),
+        xaxis=dict(tickvals=ts["minute"].tolist(), ticktext=ts["label"].tolist(), title=""),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1,
+                    font=dict(color="#9aa8ba", size=12)),
+    )
+    st.plotly_chart(plotly_layout(fig_ts, 280), use_container_width=True,
+                    config={"displayModeBar": False})
 
     st.markdown("<br>", unsafe_allow_html=True)
 
