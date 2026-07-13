@@ -361,7 +361,7 @@ def seed(conn: sqlite3.Connection) -> None:
         [
             (soccer_live_id, "outdoor_temp",      78,   "°F",  "Warm afternoon — heat risk in outdoor sections", "Monitor"),
             (soccer_live_id, "indoor_temp",       71,   "°F",  "HVAC maintaining target range",                  "Stable"),
-            (soccer_live_id, "aqi",               52,   "AQI", "Moderate — acceptable but elevated",             "Monitor"),
+            (soccer_live_id, "aqi",               34,   "AQI", "Good — no air quality concern",                  "Stable"),
             (soccer_live_id, "humidity",          65,   "%",   "Elevated — compounds heat stress risk",          "Monitor"),
             (soccer_live_id, "wind_speed",         8,   "mph", "Light breeze — minimal cooling effect outdoors", "Stable"),
             (soccer_live_id, "crowd_density_avg", 84,   "%",   "84% average density amplifies all thermal risks","Monitor"),
@@ -378,8 +378,8 @@ def seed(conn: sqlite3.Connection) -> None:
              "Fans showing distress in Lower Concourse East. Medical staff response times. Water station queue lengths before halftime.",
              "Any section exceeds 92% density AND outdoor temp climbs above 85°F"),
             (soccer_live_id, "Air Quality",   "Stable",
-             "AQI 52 outdoors — ventilation running at capacity",
-             "Indoor air quality is acceptable. Moderate outdoor AQI poses no risk to general population. Ventilation is at full capacity. CO₂ buildup in enclosed concourses is possible but not yet flagged.",
+             "AQI 34 outdoors — good air quality, no concern",
+             "Indoor and outdoor air quality is good. AQI 34 poses no risk to any population group. Ventilation is at full capacity. CO₂ buildup in enclosed concourses is possible but not yet flagged.",
              "AQI trend mid-event. Ventilation fault alerts. Any unusual odor reports from concourses.",
              "Outdoor AQI exceeds 100 OR any HVAC fault reported during event"),
             (soccer_live_id, "Crowd Comfort", "Monitor",
@@ -399,7 +399,7 @@ def seed(conn: sqlite3.Connection) -> None:
     rng = np.random.default_rng(seed=77)
     soccer_ts_minutes = np.array([-30, -15, 0, 15, 30, 45, 60, 75, 90])
     base_temp = np.array([74, 75, 76, 77, 78, 78, 79, 78, 77], dtype=float)
-    base_aqi  = np.array([42, 44, 47, 50, 52, 53, 55, 54, 52], dtype=float)
+    base_aqi  = np.array([30, 31, 32, 33, 34, 35, 36, 35, 34], dtype=float)
     temp_vals = (base_temp + rng.normal(0, 0.3, len(soccer_ts_minutes))).round(1)
     aqi_vals  = (base_aqi  + rng.normal(0, 1.0, len(soccer_ts_minutes))).round(1)
     cur.executemany(
