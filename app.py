@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import streamlit as st
 
 from src.pages.after_action_report import render_after_action_report
@@ -13,7 +15,8 @@ configure_page()
 
 statuses = get_all_statuses()
 
-st.sidebar.title("ArenaPulse")
+_logo = Path(__file__).parent / "assets" / "arenapulse_logo.jpg"
+st.sidebar.image(str(_logo), use_container_width=True)
 st.sidebar.caption("Stadium sustainability intelligence")
 
 waste_label  = f"{status_emoji(statuses['waste'].status)} Waste"
