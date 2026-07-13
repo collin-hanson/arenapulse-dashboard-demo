@@ -222,32 +222,8 @@ def render_energy_carbon() -> None:
         }],
     )
 
-    donut_col, rec_col = st.columns([1, 1.2])
-    with donut_col:
-        st.plotly_chart(plotly_layout(fig_donut, 280), use_container_width=True,
-                        config={"displayModeBar": False})
-
-    with rec_col:
-        bar_color_map = {"Monitor": "#e8b84d", "Stable": "#12b981", "High": "#ff5b65"}
-        for row in energy.itertuples(index=False):
-            pill_cls  = str(row.status).lower()
-            bar_color = bar_color_map.get(str(row.status), "#16d9e8")
-            pct_width = f"{row.share:.0%}"
-            st.markdown(
-                f'<div style="background:#151c25;border:1px solid #2b3645;border-radius:10px;'
-                f'padding:10px 14px;margin-bottom:6px;">'
-                f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
-                f'<strong style="color:#f4f7fb;font-size:13px;">{_html.escape(row.system)}</strong>'
-                f'<span class="ap-pill {pill_cls}">{_html.escape(row.status)}</span>'
-                f'</div>'
-                f'<div style="background:#2b3645;border-radius:4px;height:5px;margin-bottom:5px;">'
-                f'<div style="background:{bar_color};width:{pct_width};height:5px;border-radius:4px;"></div>'
-                f'</div>'
-                f'<span style="font-size:11px;color:#9aa8ba;">{pct_width} of tracked load'
-                f' — {_html.escape(row.recommendation)}</span>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
+    st.plotly_chart(plotly_layout(fig_donut, 300), use_container_width=True,
+                    config={"displayModeBar": False})
 
     # ── AI assistant ──────────────────────────────────────────────────────────
     from src.components.arena_components import ai_chat
