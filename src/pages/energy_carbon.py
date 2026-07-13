@@ -213,17 +213,41 @@ def render_energy_carbon() -> None:
     ))
     fig_donut.update_layout(
         showlegend=False,
-        margin={"t": 10, "b": 10, "l": 10, "r": 10},
-        annotations=[{
-            "text": f"<b>{lighting_share:.0%}</b><br>Lighting",
-            "x": 0.5, "y": 0.5,
-            "font": {"size": 16, "color": "#f4f7fb"},
-            "showarrow": False,
-        }],
+        margin={"t": 40, "b": 20, "l": 20, "r": 20},
     )
 
-    st.plotly_chart(plotly_layout(fig_donut, 300), use_container_width=True,
-                    config={"displayModeBar": False})
+    # ── kWh/fan — last 10 events bar chart ───────────────────────────────────
+    hist = get_energy_history(total_kwh)
+    bar_colors = ["#16d9e8" if i == len(hist) - 1 else "#2b3645"
+                  for i in range(len(hist))]
+    epf_vals = [round(row.total_kwh / ctx.attendance, 2)
+                for row in hist.itertuples(index=False)]
+    fig_bar = go.Figure(go.Bar(
+        x=hist["event"].tolist(),
+        y=epf_vals,
+        marker={"color": bar_colors, "line": {"width": 0}},
+        hovertemplate="%{x}: %{y:.2f} kWh/fan<extra></extra>",
+    ))
+    fig_bar.add_hline(
+        y=sum(epf_vals) / len(epf_vals),
+        line={"color": "#6b7a8d", "dash": "dot", "width": 1.5},
+        annotation_text="10-event avg",
+        annotation_font_color="#6b7a8d",
+        annotation_position="top left",
+    )
+    fig_bar.update_layout(
+        yaxis=dict(title="kWh / fan", gridcolor="#1e2d3d"),
+        xaxis=dict(title="", tickfont={"color": "#9aa8ba", "size": 10}),
+        margin={"t": 40, "b": 20, "l": 40, "r": 20},
+    )
+
+    donut_col, bar_col = st.columns(2)
+    with donut_col:
+        st.plotly_chart(plotly_layout(fig_donut, 300), use_container_width=True,
+                        config={"displayModeBar": False})
+    with bar_col:
+        st.plotly_chart(plotly_layout(fig_bar, 300), use_container_width=True,
+                        config={"displayModeBar": False})
 
     # ── AI assistant ──────────────────────────────────────────────────────────
     from src.components.arena_components import ai_chat
