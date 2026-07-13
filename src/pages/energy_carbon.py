@@ -68,7 +68,6 @@ def render_energy_carbon() -> None:
             unsafe_allow_html=True,
         )
 
-    st.markdown("<br>", unsafe_allow_html=True)
 
     # ── Priority action card (full width) ────────────────────────────────────
     st.markdown(
@@ -188,32 +187,67 @@ def render_energy_carbon() -> None:
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # ── System detail — load bars ─────────────────────────────────────────────
+    # ── System detail — donut + recommendation rows ───────────────────────────
     st.markdown(
         '<div class="ap-section-header">⚡ System detail</div>'
         '<div class="ap-section-sub">Live load by system — tracked from building management</div>',
         unsafe_allow_html=True,
     )
-    bar_color_map = {"Monitor": "#e8b84d", "Stable": "#12b981", "High": "#ff5b65"}
-    for row in energy.itertuples(index=False):
-        pill_cls  = str(row.status).lower()
-        bar_color = bar_color_map.get(str(row.status), "#16d9e8")
-        pct_width = f"{row.share:.0%}"
-        st.markdown(
-            f'<div style="background:#151c25;border:1px solid #2b3645;border-radius:10px;'
-            f'padding:10px 14px;margin-bottom:6px;">'
-            f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
-            f'<strong style="color:#f4f7fb;font-size:13px;">{_html.escape(row.system)}</strong>'
-            f'<span class="ap-pill {pill_cls}">{_html.escape(row.status)}</span>'
-            f'</div>'
-            f'<div style="background:#2b3645;border-radius:4px;height:5px;margin-bottom:5px;">'
-            f'<div style="background:{bar_color};width:{pct_width};height:5px;border-radius:4px;"></div>'
-            f'</div>'
-            f'<span style="font-size:11px;color:#9aa8ba;">{pct_width} of tracked load'
-            f' — {_html.escape(row.recommendation)}</span>'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
+
+    color_map = {"High": "#ff5b65", "Monitor": "#e8b84d", "Stable": "#12b981"}
+    systems      = [row.system      for row in energy.itertuples(index=False)]
+    shares       = [row.share       for row in energy.itertuples(index=False)]
+    statuses_sys = [row.status      for row in energy.itertuples(index=False)]
+    colors       = [color_map.get(s, "#16d9e8") for s in statuses_sys]
+
+    fig_donut = go.Figure(go.Pie(
+        labels=systems,
+        values=shares,
+        hole=0.62,
+        marker={"colors": colors, "line": {"color": "#0b1017", "width": 2}},
+        textinfo="label+percent",
+        textfont={"color": "#f4f7fb", "size": 12},
+        hovertemplate="%{label}: %{percent}<extra></extra>",
+        direction="clockwise",
+        sort=False,
+    ))
+    fig_donut.update_layout(
+        showlegend=False,
+        margin={"t": 10, "b": 10, "l": 10, "r": 10},
+        annotations=[{
+            "text": f"<b>{lighting_share:.0%}</b><br>Lighting",
+            "x": 0.5, "y": 0.5,
+            "font": {"size": 16, "color": "#f4f7fb"},
+            "showarrow": False,
+        }],
+    )
+
+    donut_col, rec_col = st.columns([1, 1.2])
+    with donut_col:
+        st.plotly_chart(plotly_layout(fig_donut, 280), use_container_width=True,
+                        config={"displayModeBar": False})
+
+    with rec_col:
+        bar_color_map = {"Monitor": "#e8b84d", "Stable": "#12b981", "High": "#ff5b65"}
+        for row in energy.itertuples(index=False):
+            pill_cls  = str(row.status).lower()
+            bar_color = bar_color_map.get(str(row.status), "#16d9e8")
+            pct_width = f"{row.share:.0%}"
+            st.markdown(
+                f'<div style="background:#151c25;border:1px solid #2b3645;border-radius:10px;'
+                f'padding:10px 14px;margin-bottom:6px;">'
+                f'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
+                f'<strong style="color:#f4f7fb;font-size:13px;">{_html.escape(row.system)}</strong>'
+                f'<span class="ap-pill {pill_cls}">{_html.escape(row.status)}</span>'
+                f'</div>'
+                f'<div style="background:#2b3645;border-radius:4px;height:5px;margin-bottom:5px;">'
+                f'<div style="background:{bar_color};width:{pct_width};height:5px;border-radius:4px;"></div>'
+                f'</div>'
+                f'<span style="font-size:11px;color:#9aa8ba;">{pct_width} of tracked load'
+                f' — {_html.escape(row.recommendation)}</span>'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
 
     # ── AI assistant ──────────────────────────────────────────────────────────
     from src.components.arena_components import ai_chat
